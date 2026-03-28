@@ -4,9 +4,10 @@ from datetime import date
 
 st.set_page_config(layout="wide")
 
-st.title("Dashboard Monitoring NPR & PUR")
+st.title("Dashboard Monitoring NPR, PUR & SQ")
 
-tab1, tab2 = st.tabs(["NPR", "PUR"])
+# Tambahkan tab ketiga: SQ to SO
+tab1, tab2, tab3 = st.tabs(["NPR", "PUR", "SQ to SO"])
 
 # =============================
 # TAB NPR
@@ -106,3 +107,52 @@ with tab2:
     st.divider()
     st.subheader("Semua Data PUR")
     st.dataframe(df_pur)
+
+# =============================
+# TAB SQ TO SO
+# =============================
+# =============================
+# TAB SQ TO SO
+# =============================
+with tab3:
+    st.header("Dashboard SQ to SO")
+
+    # Baca data SQ
+    df_sq = pd.read_excel("data_sq_to_so.xlsx")
+    df_sq.columns = df_sq.columns.str.strip()
+
+    # Filter Customer
+    customer_list = df_sq["Customer"].dropna().unique().tolist()
+    customer = st.selectbox("Filter Customer SQ", ["Semua"] + sorted(customer_list))
+
+    # Terapkan Filter Customer
+    if customer != "Semua":
+        df_sq_filtered = df_sq[df_sq["Customer"] == customer]
+    else:
+        df_sq_filtered = df_sq
+
+    # --- LOGIKA REVISI: Filter Status ---
+    # Kita hanya ambil data yang statusnya Complete atau In Progress
+    df_valid_status = df_sq_filtered[df_sq_filtered["Status"].isin(["Complete", "In Progress"])]
+
+    # 1. Hitung Jumlah Transaksi Unik (hanya yang Complete & In Progress)
+    sq_complete = df_valid_status[df_valid_status["Status"] == "Complete"]["No Transaksi"].nunique()
+    sq_inprogress = df_valid_status[df_valid_status["Status"] == "In Progress"]["No Transaksi"].nunique()
+    
+    # 2. Hitung Total Nilai Barang (Hanya dari data yang Complete & In Progress)
+    total_nilai = df_valid_status["Total Barang"].sum()
+
+    # --- TAMPILAN METRIC ---
+    col1, col2, col3 = st.columns(3)
+    col1.metric("SQ Complete", sq_complete)
+    col2.metric("SQ In Progress", sq_inprogress)
+    
+    # Menampilkan total harga dengan format Rupiah (Pemisah Titik)
+    col3.metric("Total Nilai (Comp & In-Prog)", f"Rp {total_nilai:,.0f}".replace(",", "."))
+
+    st.divider()
+    
+    st.subheader(f"Detail Data SQ: {customer}")
+    
+    # Menampilkan tabel (tetap menampilkan data asli hasil filter customer agar Anda bisa lihat semua status)
+    st.dataframe(df_sq_filtered)
