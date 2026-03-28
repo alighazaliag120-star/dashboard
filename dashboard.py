@@ -111,48 +111,70 @@ with tab2:
 # =============================
 # TAB SQ TO SO
 # =============================
-# =============================
-# TAB SQ TO SO
-# =============================
 with tab3:
     st.header("Dashboard SQ to SO")
 
-    # Baca data SQ
-    df_sq = pd.read_excel("data_sq_to_so.xlsx")
-    df_sq.columns = df_sq.columns.str.strip()
+    # 1. BACA DATA
+    df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
+    df_sq_baru = pd.read_excel("data_sq.xlsx")
 
-    # Filter Customer
-    customer_list = df_sq["Customer"].dropna().unique().tolist()
-    customer = st.selectbox("Filter Customer SQ", ["Semua"] + sorted(customer_list))
+    # Bersihkan nama kolom
+    df_sq_to_so.columns = df_sq_to_so.columns.str.strip()
+    df_sq_baru.columns = df_sq_baru.columns.str.strip()
 
-    # Terapkan Filter Customer
-    if customer != "Semua":
-        df_sq_filtered = df_sq[df_sq["Customer"] == customer]
-    else:
-        df_sq_filtered = df_sq
-
-    # --- LOGIKA REVISI: Filter Status ---
-    # Kita hanya ambil data yang statusnya Complete atau In Progress
-    df_valid_status = df_sq_filtered[df_sq_filtered["Status"].isin(["Complete", "In Progress"])]
-
-    # 1. Hitung Jumlah Transaksi Unik (hanya yang Complete & In Progress)
-    sq_complete = df_valid_status[df_valid_status["Status"] == "Complete"]["No Transaksi"].nunique()
-    sq_inprogress = df_valid_status[df_valid_status["Status"] == "In Progress"]["No Transaksi"].nunique()
+    # ==========================================
+    # BAGIAN ATAS: DATA SQ TO SO (Tabel 1)
+    # ==========================================
+    st.subheader("1. Monitoring SQ to SO")
     
-    # 2. Hitung Total Nilai Barang (Hanya dari data yang Complete & In Progress)
-    total_nilai = df_valid_status["Total Barang"].sum()
+    cust_list1 = df_sq_to_so["Customer"].dropna().unique().tolist()
+    filter_cust1 = st.selectbox("Filter Customer (SQ to SO)", ["Semua"] + sorted(cust_list1), key="filter_cust1")
 
-    # --- TAMPILAN METRIC ---
-    col1, col2, col3 = st.columns(3)
-    col1.metric("SQ Complete", sq_complete)
-    col2.metric("SQ In Progress", sq_inprogress)
-    
-    # Menampilkan total harga dengan format Rupiah (Pemisah Titik)
-    col3.metric("Total Nilai (Comp & In-Prog)", f"Rp {total_nilai:,.0f}".replace(",", "."))
+    df1_filtered = df_sq_to_so if filter_cust1 == "Semua" else df_sq_to_so[df_sq_to_so["Customer"] == filter_cust1]
+
+    # Metric Tabel 1
+    subtotal1 = df1_filtered[df1_filtered["Status"] != "Draft"]["Total Barang"].sum()
+    col_a, col_b = st.columns(2)
+    col_a.metric("Total SQ to SO", len(df1_filtered))
+    col_b.metric("Subtotal (Non-Draft)", f"Rp {subtotal1:,.0f}".replace(",", "."))
+
+    st.dataframe(df1_filtered, use_container_width=True)
 
     st.divider()
+
+    # ==========================================
+    # BAGIAN BAWAH: DATA SQ BARU (Tabel 2 - Dengan Filter Week)
+    # ==========================================
+    st.subheader("2. Monitoring Data SQ Baru")
+
+    # Membuat dua kolom untuk filter agar sejajar
+    col_filter1, col_filter2 = st.columns(2)
+
+    with col_filter1:
+        cust_list2 = df_sq_baru["Customer"].dropna().unique().tolist()
+        filter_cust2 = st.selectbox("Filter Customer", ["Semua"] + sorted(cust_list2), key="filter_cust2")
+
+    with col_filter2:
+        # Menambahkan filter Week
+        week_list = df_sq_baru["Week"].dropna().unique().tolist()
+        # Mengurutkan week (asumsi data week adalah angka atau string yang bisa diurutkan)
+        filter_week = st.selectbox("Filter Week", ["Semua"] + sorted(week_list), key="filter_week2")
+
+    # Logika Filter Berlapis untuk Tabel 2
+    df2_filtered = df_sq_baru.copy()
+
+    if filter_cust2 != "Semua":
+        df2_filtered = df2_filtered[df2_filtered["Customer"] == filter_cust2]
     
-    st.subheader(f"Detail Data SQ: {customer}")
-    
-    # Menampilkan tabel (tetap menampilkan data asli hasil filter customer agar Anda bisa lihat semua status)
-    st.dataframe(df_sq_filtered)
+    if filter_week != "Semua":
+        df2_filtered = df2_filtered[df2_filtered["Week"] == filter_week]
+
+    # Hitung Subtotal Tabel 2 (Kecuali Draft)
+    subtotal2 = df2_filtered[df2_filtered["Status"] != "Draft"]["Sub Total"].sum()
+
+    # Metric Tabel 2
+    col_c, col_d = st.columns(2)
+    col_c.metric(f"Total SQ Baru (Week {filter_week})", len(df2_filtered))
+    col_d.metric("Subtotal (Non-Draft)", f"Rp {subtotal2:,.0f}".replace(",", "."))
+
+    st.dataframe(df2_filtered, use_container_width=True)
