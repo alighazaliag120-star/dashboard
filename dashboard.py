@@ -1,91 +1,125 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
+from datetime import date, timedelta
 
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="Dashboard Monitoring Monitoring")
 
-st.title("Dashboard Monitoring")
+st.title("Dashboard Monitoring NPR, PUR, SQ & KPI")
 
-# Definisi Tab (Menambahkan Tab 4)
+# Definisi Tab
 tab1, tab2, tab3, tab4 = st.tabs(["NPR", "PUR", "SQ to SO", "KPI Marketing"])
 
+today = date.today()
+
 # =================================================================
-# TAB 1: NPR
+# TAB 1: NPR (Update Filter Tanggal Selesai)
 # =================================================================
 with tab1:
     st.header("Dashboard NPR")
     df_npr = pd.read_excel("data_npr.xlsx")
     df_npr.columns = df_npr.columns.str.strip()
+    
+    # Pastikan kolom Tanggal Complete dalam format datetime
     df_npr["Tanggal Complete"] = pd.to_datetime(df_npr["Tanggal Complete"], errors="coerce")
-    today = date.today()
-
-    nama_list = df_npr["Penanggung Jawab"].dropna().unique().tolist()
-    nama = st.selectbox("Filter Penanggung Jawab NPR", ["Semua"] + sorted(nama_list))
-
-    if nama != "Semua":
-        df_npr = df_npr[df_npr["Penanggung Jawab"] == nama]
-
-    total_npr = len(df_npr)
-    total_complete = len(df_npr[df_npr["Status"] == "Complete"])
-    selesai_hari_ini = df_npr[(df_npr["Status"] == "Complete") & (df_npr["Tanggal Complete"].dt.date == today)]
-    total_today = len(selesai_hari_ini)
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total NPR", total_npr)
-    col2.metric("Total NPR Complete", total_complete)
-    col3.metric("Selesai Hari Ini", total_today)
-
-    st.divider()
-    st.subheader("Data NPR selesai hari ini")
-    if total_today > 0:
-        st.error(f"Ada {total_today} NPR selesai hari ini")
-        st.dataframe(selesai_hari_ini, use_container_width=True)
+    
+    # --- LOGIKA FILTER TANGGAL BARU ---
+    col_f_npr1, col_f_npr2 = st.columns(2)
+    with col_f_npr1:
+        mode_npr = st.radio("Mode Tampilan NPR:", ["Selesai Hari Ini", "Pilih Tanggal Selesai (Tempo Lalu)"], key="mode_npr")
+    
+    if mode_npr == "Selesai Hari Ini":
+        df_npr_filtered = df_npr[(df_npr["Status"] == "Complete") & (df_npr["Tanggal Complete"].dt.date == today)]
+        label_tabel_npr = "Data NPR Selesai Hari Ini"
     else:
-        st.success("Tidak ada NPR selesai hari ini")
+        with col_f_npr2:
+            # Filter rentang tanggal (default 7 hari terakhir)
+            date_range_npr = st.date_input("Pilih Rentang Tanggal Selesai:", 
+                                           value=(today - timedelta(days=7), today), 
+                                           key="date_npr")
+        if len(date_range_npr) == 2:
+            start_date, end_date = date_range_npr
+            df_npr_filtered = df_npr[
+                (df_npr["Status"] == "Complete") & 
+                (df_npr["Tanggal Complete"].dt.date >= start_date) & 
+                (df_npr["Tanggal Complete"].dt.date <= end_date)
+            ]
+            label_tabel_npr = f"Data NPR Selesai Periode {start_date} s/d {end_date}"
+        else:
+            df_npr_filtered = df_npr[df_npr["Status"] == "Complete"]
+            label_tabel_npr = "Silakan pilih rentang tanggal"
+
+    # Metric
+    total_all_npr = len(df_npr)
+    total_complete_npr = len(df_npr[df_npr["Status"] == "Complete"])
+    total_filtered_npr = len(df_npr_filtered)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Semua NPR", total_all_npr)
+    c2.metric("Total Semua Complete", total_complete_npr)
+    c3.metric("NPR Terfilter (Complete)", total_filtered_npr)
 
     st.divider()
-    st.subheader("Semua Data NPR")
-    st.dataframe(df_npr, use_container_width=True)
-
+    st.subheader(label_tabel_npr)
+    if total_filtered_npr > 0:
+        if mode_npr == "Selesai Hari Ini":
+            st.error(f"Ada {total_filtered_npr} NPR selesai hari ini!")
+        st.dataframe(df_npr_filtered, use_container_width=True)
+    else:
+        st.info("Tidak ada data NPR yang cocok dengan filter tanggal tersebut.")
 
 # =================================================================
-# TAB 2: PUR
+# TAB 2: PUR (Update Filter Tanggal Selesai)
 # =================================================================
 with tab2:
     st.header("Dashboard PUR")
     df_pur = pd.read_excel("data_pur.xlsx")
     df_pur.columns = df_pur.columns.str.strip()
     df_pur["Tanggal Complete"] = pd.to_datetime(df_pur["Tanggal Complete"], errors="coerce")
-    today = date.today()
 
-    nama_list_pur = df_pur["Penanggung Jawab"].dropna().unique().tolist()
-    nama_pur = st.selectbox("Filter Penanggung Jawab PUR", ["Semua"] + sorted(nama_list_pur))
-
-    if nama_pur != "Semua":
-        df_pur = df_pur[df_pur["Penanggung Jawab"] == nama_pur]
-
-    total_pur = len(df_pur)
-    total_complete_pur = len(df_pur[df_pur["Status"] == "Complete"])
-    pur_today = df_pur[(df_pur["Status"] == "Complete") & (df_pur["Tanggal Complete"].dt.date == today)]
-    total_today_pur = len(pur_today)
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total PUR", total_pur)
-    col2.metric("Total PUR Complete", total_complete_pur)
-    col3.metric("Selesai Hari Ini", total_today_pur)
-
-    st.divider()
-    st.subheader("Data PUR selesai hari ini")
-    if total_today_pur > 0:
-        st.error(f"Ada {total_today_pur} PUR selesai hari ini")
-        st.dataframe(pur_today, use_container_width=True)
+    # --- LOGIKA FILTER TANGGAL BARU ---
+    col_f_pur1, col_f_pur2 = st.columns(2)
+    with col_f_pur1:
+        mode_pur = st.radio("Mode Tampilan PUR:", ["Selesai Hari Ini", "Pilih Tanggal Selesai (Tempo Lalu)"], key="mode_pur")
+    
+    if mode_pur == "Selesai Hari Ini":
+        df_pur_filtered = df_pur[(df_pur["Status"] == "Complete") & (df_pur["Tanggal Complete"].dt.date == today)]
+        label_tabel_pur = "Data PUR Selesai Hari Ini"
     else:
-        st.success("Tidak ada PUR selesai hari ini")
+        with col_f_pur2:
+            date_range_pur = st.date_input("Pilih Rentang Tanggal Selesai:", 
+                                           value=(today - timedelta(days=7), today), 
+                                           key="date_pur")
+        if len(date_range_pur) == 2:
+            start_p, end_p = date_range_pur
+            df_pur_filtered = df_pur[
+                (df_pur["Status"] == "Complete") & 
+                (df_pur["Tanggal Complete"].dt.date >= start_p) & 
+                (df_pur["Tanggal Complete"].dt.date <= end_p)
+            ]
+            label_tabel_pur = f"Data PUR Selesai Periode {start_p} s/d {end_p}"
+        else:
+            df_pur_filtered = df_pur[df_pur["Status"] == "Complete"]
+            label_tabel_pur = "Silakan pilih rentang tanggal"
+
+    # Metric
+    total_all_pur = len(df_pur)
+    total_complete_pur = len(df_pur[df_pur["Status"] == "Complete"])
+    total_filtered_pur = len(df_pur_filtered)
+
+    cp1, cp2, cp3 = st.columns(3)
+    cp1.metric("Total Semua PUR", total_all_pur)
+    cp2.metric("Total Semua Complete", total_complete_pur)
+    cp3.metric("PUR Terfilter (Complete)", total_filtered_pur)
 
     st.divider()
-    st.subheader("Semua Data PUR")
-    st.dataframe(df_pur, use_container_width=True)
+    st.subheader(label_tabel_pur)
+    if total_filtered_pur > 0:
+        if mode_pur == "Selesai Hari Ini":
+            st.error(f"Ada {total_filtered_pur} PUR selesai hari ini!")
+        st.dataframe(df_pur_filtered, use_container_width=True)
+    else:
+        st.info("Tidak ada data PUR yang cocok dengan filter tanggal tersebut.")
 
 
 # =================================================================
