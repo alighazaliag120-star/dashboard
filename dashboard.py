@@ -5,7 +5,7 @@ from datetime import date
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="Dashboard Monitoring Monitoring")
 
-st.title("Dashboard Monitoring NPR, PUR, SQ & KPI")
+st.title("Dashboard Monitoring")
 
 # Definisi Tab (Menambahkan Tab 4)
 tab1, tab2, tab3, tab4 = st.tabs(["NPR", "PUR", "SQ to SO", "KPI Marketing"])
