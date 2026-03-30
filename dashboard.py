@@ -3,40 +3,46 @@ import pandas as pd
 from datetime import date, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import os  # Tambahan wajib untuk deteksi file
 
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="Dashboard Monitoring", initial_sidebar_state="expanded")
 
 def load_gsheet_all():
-    path_to_json = "kunci_database.json" 
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     spreadsheet_id = "10lpdIeAkhQj1Rv2tnP2V806edBnpCICbU2bsf5OslKc"
     
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(path_to_json, scope)
-    client = gspread.authorize(creds)
-    
-    sheet = client.open_by_key(spreadsheet_id).worksheet("ALL")
-    
-    # Ambil semua data
-    data = sheet.get_all_values()
-    
-    # --- PERBAIKAN PENTING DISINI ---
-    # Berdasarkan foto, nama kolom ada di baris ke-4 (index 3 di Python)
-    header = data[3]  
-    
-    # Data dimulai dari baris ke-5 (index 4 di Python)
-    rows = data[4:] 
-    
-    # Buat DataFrame
-    df = pd.DataFrame(rows, columns=header)
-    
-    # Bersihkan nama kolom dari spasi atau karakter aneh
-    df.columns = df.columns.str.strip()
-    
-    # Hapus kolom kosong (seperti kolom F di foto kamu yang tidak ada judulnya)
-    df = df.loc[:, df.columns != '']
-    
-    return df
+    try:
+        # LOGIKA DETEKSI KUNCI (LAPTOP VS CLOUD)
+        if os.path.exists("kunci_database.json"):
+            # Jika jalan di laptop (Local), pakai file JSON
+            creds = ServiceAccountCredentials.from_json_keyfile_name("kunci_database.json", scope)
+        else:
+            # --- PERBAIKAN DI SINI ---
+            # Mengambil dari st.secrets dan memastikan formatnya adalah Dictionary murni
+            creds_info = dict(st.secrets["gcp_service_account"])
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
+            
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key(spreadsheet_id).worksheet("ALL")
+        
+        # Ambil semua data
+        data = sheet.get_all_values()
+        
+        # Header baris 4 (index 3), Data mulai baris 5 (index 4)
+        if len(data) > 3:
+            header = data[3] 
+            rows = data[4:] 
+            df = pd.DataFrame(rows, columns=header)
+            df.columns = df.columns.str.strip()
+            df = df.loc[:, df.columns != '']
+            return df
+        else:
+            return pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"Gagal koneksi database: {e}")
+        return pd.DataFrame()
 
 # =================================================================
 # SIDEBAR NAVIGATION
@@ -160,7 +166,7 @@ elif menu_pilihan == "SQ to SO":
     c2b.metric("Subtotal (Non-Draft)", f"Rp {subtotal2:,.0f}".replace(",", "."))
     st.dataframe(df2_f, use_container_width=True)
 
-# --- MENU 4: KPI MARKETING (EXCEL - DENGAN FILTER SEMUA BULAN) ---
+# --- MENU 4: KPI MARKETING (EXCEL) ---
 elif menu_pilihan == "KPI Marketing":
     st.header("KPI Marketing Performance")
     df_si = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
@@ -207,73 +213,65 @@ elif menu_pilihan == "KPI Marketing":
     m1.metric(f"Total SI - {sel_sales}", f"Rp {val_si:,.0f}".replace(",", "."))
     m2.metric(f"Total SQ - {sel_sales}", f"Rp {val_sq:,.0f}".replace(",", "."))
 
-# --- MENU 5: LAPORAN WEEKLY (FINAL REVISI NO ERROR) ---
+# --- MENU 5: LAPORAN WEEKLY (HYBRID SUPPORT) ---
 elif menu_pilihan == "Laporan Weekly":
     st.header("Laporan Weekly - Monitoring PO Jhonlin")
     
     try:
         df_all = load_gsheet_all()
-        # Bersihkan nama kolom
-        df_all.columns = df_all.columns.str.strip()
+        if df_all.empty:
+            st.warning("Data tidak tersedia atau gagal memuat.")
+        else:
+            df_all.columns = df_all.columns.str.strip()
 
-        st.subheader("Filter Breakdown")
-        f_bln, f_cust, f_week, f_tgl = st.columns(4)
-        
-        with f_bln:
-            list_bulan = ["Semua"] + sorted(df_all["Bulan"].unique().astype(str).tolist())
-            sel_bulan_w = st.selectbox("Pilih Bulan", list_bulan, key="w_bln")
+            st.subheader("Filter Breakdown")
+            f_bln, f_cust, f_week, f_tgl = st.columns(4)
             
-        with f_cust:
-            list_cust = ["Semua"] + sorted(df_all["Customer"].unique().astype(str).tolist())
-            sel_cust_w = st.selectbox("Pilih Customer", list_cust, key="w_cust")
+            with f_bln:
+                list_bulan = ["Semua"] + sorted(df_all["Bulan"].unique().astype(str).tolist())
+                sel_bulan_w = st.selectbox("Pilih Bulan", list_bulan, key="w_bln")
+                
+            with f_cust:
+                list_cust = ["Semua"] + sorted(df_all["Customer"].unique().astype(str).tolist())
+                sel_cust_w = st.selectbox("Pilih Customer", list_cust, key="w_cust")
 
-        with f_week:
-            list_week = ["Semua"] + sorted(df_all["Week"].unique().astype(str).tolist())
-            sel_week_w = st.selectbox("Pilih Week", list_week, key="w_week")
+            with f_week:
+                list_week = ["Semua"] + sorted(df_all["Week"].unique().astype(str).tolist())
+                sel_week_w = st.selectbox("Pilih Week", list_week, key="w_week")
 
-        with f_tgl:
-            list_tgl = ["Semua"] + sorted(df_all["Tgl Terima Email"].unique().astype(str).tolist())
-            sel_tgl_w = st.selectbox("Pilih Tgl Terima Email", list_tgl, key="w_tgl")
+            with f_tgl:
+                list_tgl = ["Semua"] + sorted(df_all["Tgl Terima Email"].unique().astype(str).tolist())
+                sel_tgl_w = st.selectbox("Pilih Tgl Terima Email", list_tgl, key="w_tgl")
 
-        # --- PROSES FILTER ---
-        df_filtered = df_all.copy()
-        if sel_bulan_w != "Semua":
-            df_filtered = df_filtered[df_filtered["Bulan"].astype(str) == sel_bulan_w]
-        if sel_cust_w != "Semua":
-            df_filtered = df_filtered[df_filtered["Customer"].astype(str) == sel_cust_w]
-        if sel_week_w != "Semua":
-            df_filtered = df_filtered[df_filtered["Week"].astype(str) == sel_week_w]
-        if sel_tgl_w != "Semua":
-            df_filtered = df_filtered[df_filtered["Tgl Terima Email"].astype(str) == sel_tgl_w]
+            # --- PROSES FILTER ---
+            df_filtered = df_all.copy()
+            if sel_bulan_w != "Semua":
+                df_filtered = df_filtered[df_filtered["Bulan"].astype(str) == sel_bulan_w]
+            if sel_cust_w != "Semua":
+                df_filtered = df_filtered[df_filtered["Customer"].astype(str) == sel_cust_w]
+            if sel_week_w != "Semua":
+                df_filtered = df_filtered[df_filtered["Week"].astype(str) == sel_week_w]
+            if sel_tgl_w != "Semua":
+                df_filtered = df_filtered[df_filtered["Tgl Terima Email"].astype(str) == sel_tgl_w]
 
-        # --- METRIC BARU (REVISI SESUAI REQUEST) ---
-        st.divider()
-        m1, m2 = st.columns(2)
-        
-        # 1. Total Unit PO (Menghitung yang unik/tidak duplikat)
-        col_po = "No PO"
-        if col_po in df_filtered.columns:
-            total_po_unik = df_filtered[col_po].nunique()
-        else:
-            total_po_unik = 0
+            # --- METRIC ---
+            st.divider()
+            m1, m2 = st.columns(2)
+            
+            col_po = "No PO"
+            total_po_unik = df_filtered[col_po].nunique() if col_po in df_filtered.columns else 0
 
-        # 2. Total Nominal PO (SUM dari Nominal PO / ON SITE)
-        col_nom = "Nominal PO" # Sesuaikan jika kolomnya bernama 'SUM of ON SITE'
-        if col_nom not in df_filtered.columns:
-             col_nom = "SUM of ON SITE" # Backup jika nama kolom beda
-             
-        if col_nom in df_filtered.columns:
-            # Hilangkan karakter non-angka jika ada, lalu sum
-            nominal_val = pd.to_numeric(df_filtered[col_nom].astype(str).str.replace('[^0-9]', '', regex=True), errors='coerce').sum()
-        else:
-            nominal_val = 0
+            col_nom = "SUM of ON SITE"
+            if col_nom in df_filtered.columns:
+                nominal_val = pd.to_numeric(df_filtered[col_nom].astype(str).str.replace('[^0-9]', '', regex=True), errors='coerce').sum()
+            else:
+                nominal_val = 0
 
-        m1.metric("Total Unit PO (Unik)", f"{total_po_unik} PO")
-        m2.metric("Total Nominal PO", f"Rp {nominal_val:,.0f}".replace(",", "."))
+            m1.metric("Total Unit PO (Unik)", f"{total_po_unik} PO")
+            m2.metric("Total Nominal PO", f"Rp {nominal_val:,.0f}".replace(",", "."))
 
-        # --- TAMPILAN TABEL ---
-        st.subheader(f"Detail Data: {sel_cust_w}")
-        st.dataframe(df_filtered, use_container_width=True)
+            st.subheader(f"Detail Data: {sel_cust_w}")
+            st.dataframe(df_filtered, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Terjadi kesalahan teknis: {e}")
+        st.error(f"Terjadi kesalahan teknis tampilan: {e}")
