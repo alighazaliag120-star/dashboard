@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import date, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import os  # Tambahan wajib untuk deteksi file
+import os
+import json  # Tambahan untuk proteksi format data
 
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="Dashboard Monitoring", initial_sidebar_state="expanded")
@@ -15,18 +16,22 @@ def load_gsheet_all():
     try:
         # LOGIKA DETEKSI KUNCI (LAPTOP VS CLOUD)
         if os.path.exists("kunci_database.json"):
-            # Jika jalan di laptop (Local), pakai file JSON
+            # Jika jalan di laptop (Local)
             creds = ServiceAccountCredentials.from_json_keyfile_name("kunci_database.json", scope)
         else:
-            # --- PERBAIKAN DI SINI ---
-            # Mengambil dari st.secrets dan memastikan formatnya adalah Dictionary murni
+            # Jika jalan di Streamlit Cloud
+            # 1. Ambil data dari Secrets dan paksa jadi Dictionary murni
             creds_info = dict(st.secrets["gcp_service_account"])
+            
+            # 2. PERBAIKAN KRUSIAL: Memastikan karakter \n dibaca benar oleh Google
+            if "private_key" in creds_info:
+                creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+            
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
             
         client = gspread.authorize(creds)
         sheet = client.open_by_key(spreadsheet_id).worksheet("ALL")
         
-        # Ambil semua data
         data = sheet.get_all_values()
         
         # Header baris 4 (index 3), Data mulai baris 5 (index 4)
@@ -41,6 +46,7 @@ def load_gsheet_all():
             return pd.DataFrame()
 
     except Exception as e:
+        # Menampilkan error spesifik agar mudah didebug
         st.error(f"Gagal koneksi database: {e}")
         return pd.DataFrame()
 
