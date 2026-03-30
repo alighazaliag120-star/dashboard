@@ -4,7 +4,7 @@ from datetime import date, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os
-import json  # Tambahan untuk proteksi format data
+import json
 
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="Dashboard Monitoring", initial_sidebar_state="expanded")
@@ -15,38 +15,29 @@ def load_gsheet_all():
     
     try:
         # LOGIKA DETEKSI KUNCI (LAPTOP VS CLOUD)
-        if os.path.exists("kunci_database.json"):
-            # Jika jalan di laptop (Local)
-            creds = ServiceAccountCredentials.from_json_keyfile_name("kunci_database.json", scope)
+        if os.path.exists("kunci_data.json"):
+            # JALAN DI LAPTOP (LOCALHOST) - Memakai file baru 'kunci_data.json'
+            creds = ServiceAccountCredentials.from_json_keyfile_name("kunci_data.json", scope)
         else:
-            # Jika jalan di Streamlit Cloud
-            # 1. Ambil data dari Secrets dan paksa jadi Dictionary murni
-            creds_info = dict(st.secrets["gcp_service_account"])
-            
-            # 2. PERBAIKAN KRUSIAL: Memastikan karakter \n dibaca benar oleh Google
-            if "private_key" in creds_info:
-                creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
-            
+            # JALAN DI STREAMLIT CLOUD
+            # Mengambil string JSON utuh dari Secrets
+            raw_json_str = st.secrets["gcp_service_account"]["content"]
+            creds_info = json.loads(raw_json_str)
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
             
         client = gspread.authorize(creds)
         sheet = client.open_by_key(spreadsheet_id).worksheet("ALL")
-        
         data = sheet.get_all_values()
         
         # Header baris 4 (index 3), Data mulai baris 5 (index 4)
         if len(data) > 3:
-            header = data[3] 
-            rows = data[4:] 
-            df = pd.DataFrame(rows, columns=header)
+            df = pd.DataFrame(data[4:], columns=data[3])
             df.columns = df.columns.str.strip()
             df = df.loc[:, df.columns != '']
             return df
-        else:
-            return pd.DataFrame()
-
+        return pd.DataFrame()
     except Exception as e:
-        # Menampilkan error spesifik agar mudah didebug
+        # Menampilkan error agar kita tahu di mana masalahnya (JWT Signature, Permission, dll)
         st.error(f"Gagal koneksi database: {e}")
         return pd.DataFrame()
 
@@ -219,7 +210,7 @@ elif menu_pilihan == "KPI Marketing":
     m1.metric(f"Total SI - {sel_sales}", f"Rp {val_si:,.0f}".replace(",", "."))
     m2.metric(f"Total SQ - {sel_sales}", f"Rp {val_sq:,.0f}".replace(",", "."))
 
-# --- MENU 5: LAPORAN WEEKLY (HYBRID SUPPORT) ---
+# --- MENU 5: LAPORAN WEEKLY ---
 elif menu_pilihan == "Laporan Weekly":
     st.header("Laporan Weekly - Monitoring PO Jhonlin")
     
