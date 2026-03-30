@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "dashboard-monitoring-streamlit",
+  "private_key_id": "dad1a10575c25f405bb3c9c8b64a7203a5364e90",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC4zmA4ktkCkVCX\nes5sXODdkom/Y3pBWm0nfGn5p9/AIKe/Y5mHEnPzunHp437gQMWG5EX7iQ3IMDPT\nReRx/ReRYXCljHZQR+SPYxKJMZvTM22c8vKe92VH8U4sfoSxCkshqeyWPrjTI5ZN\nWjxvjGb2mR/E99UdUuRUffDRyPr5xBXLsaLaEYT4l7ziNfiw5QXEPBxyb0Oyi8g2\naqM1Ka3/HAlASacIdUXLbDyuHXb4MvCTKYkDNVkeNMtvcj7eUz3xsBBJ204HJew5\nCvom1f+Ag9c1PH11Nc0PelZpBc3femVj9bV7N1MBdQTntRbbp3mXeaW4bxOpPkAb\nTgdlQPpdAgMBAAECggEAAOebEfvUuHip+oEykdY8kD5059fJU+4+OuNsM2Quf2bJ\nhhwrNr2Q4sBmvrHglPbMNhZXqge9kQgnYMvmoTuPdM8+JBlVb5wtKBngj9pgfGle\nioD9ThOWToKwaB2wcZtuyw86u3Dlf7xyB8E+1X729r3A1DqFs7s2/JuR5RJaTtm0\nQWnk8/mYRbcXIWvQlG89Qr7Qxb9so/wE03XAn8eRES8+j5T7Vd8qnQdHHJxhycV1\n9/U01de0XqjpCqID4bTAt0kzZqroLci2vMyfu8vgGUCi4fzVxeqmXcUGX2wPvBh6\nenxIcF1d3q1C/I/mkqPNGZteAZk3b4Ga07oqYXT9QQKBgQDun5HETQ2I8kyjWaZT\nukyTX9p493Vq1VHFIUXXc4j6G2Q+fDSE4EDyqMlVxlKIiBiXUHdCkzu6GiyaMdGs\nZudggoc4kfLzqlsXoFj9+v0vuYs+Y8kBbtw1cso2KGc3UZCj65FZ4EMBFzRORHeq\nxdQsgXuGyWfP9/FLXQ0STIa/oQKBgQDGQ4spyvMH4QiYqOurrf70/2IoBJfswIHX\n4PNB9M74tZa/mcI3JyOUitoc2qHJNlIlD8F3vIs0mfNrMEiF7BOfsoR0WV/DzUCB\nvC4rLeNEtCpb8bnkfBrc1F0HSwuDJVkjxsdcSQ522cpbjJbQl1KC4tGc5lblfjOO\nNhS4OUexPQKBgFerTJTAcm6UBtAlCdTNJ4ElwFCdKgh8IzS3yr8jdXneQnAqlekT\nswj0NjRLTttWlSJSr95H1bPEFgr4rr4WeH+etSt1g7s+JYWCpe96HTdBhgUACEN8\nhW8lo2FOas2KLAftblOE71khO1heE1EsqY1IbSfSK0/fGknEAB9u+jrBAoGATrRB\najXGhDowz2k/JMfNjjRTIs+v/6vr32bNKkGkZ9auISFIl9xRo4X7T7j6wIVv1oaK\npp2SJS94EfT41TECGUMkkYtpGLFCCj5JlZqBvaRHrHgo8yrQ/xjOVTbVOxp4aFtg\niKH3u/Z4/h6xP9zSRGMGEuLdW/zdOnb9gqQ6cYECgYBBHjUuFSff08Qf08xsSjGz\n5R91N3xF3M4VMl3msLwsxAO1khslFVxyTuWbu2GgxeZ8eEc+JlY+hKSp3GuIGp5Q\n7qjKhFzMpNoFmMhQnSZ50HHzVjegRiN4hoDaoc19n0d3p4x3OTnTxNCG87RjILh4\nUuT5aEDDe1CJus/01SBD3Q==\n-----END PRIVATE KEY-----\n",
+  "client_email": "akses-streamlit-dashboard@dashboard-monitoring-streamlit.iam.gserviceaccount.com",
+  "client_id": "109250469736141994025",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/akses-streamlit-dashboard%40dashboard-monitoring-streamlit.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
