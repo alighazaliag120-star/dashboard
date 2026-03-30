@@ -174,6 +174,23 @@ elif menu_pilihan == "KPI Marketing":
     df_si["Tanggal"] = pd.to_datetime(df_si["Tanggal"], errors="coerce")
     df_sq_kpi["Tanggal"] = pd.to_datetime(df_sq_kpi["Tanggal"], errors="coerce")
 
+    # ==========================================
+    # PEMBERSIHAN DATA (MENCEGAH ERROR NOMINAL)
+    # ==========================================
+    # 1. Bersihkan kolom Status dari spasi terselubung & seragamkan hurufnya
+    if "Status" in df_si.columns:
+        df_si["Status"] = df_si["Status"].astype(str).str.strip().str.title()
+    if "Status" in df_sq_kpi.columns:
+        df_sq_kpi["Status"] = df_sq_kpi["Status"].astype(str).str.strip().str.title()
+
+    # 2. Paksa kolom nominal menjadi angka (Fokus ke Total Nilai)
+    if "Total Nilai" in df_si.columns:
+        df_si["Total Nilai"] = pd.to_numeric(df_si["Total Nilai"], errors='coerce').fillna(0)
+    
+    if "Sub Total" in df_sq_kpi.columns:
+        df_sq_kpi["Sub Total"] = pd.to_numeric(df_sq_kpi["Sub Total"], errors='coerce').fillna(0)
+    # ==========================================
+
     f_col1, f_col2, f_col3 = st.columns(3)
     with f_col1:
         years = sorted(df_si["Tanggal"].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
@@ -199,7 +216,8 @@ elif menu_pilihan == "KPI Marketing":
         mask_si &= (df_si["Salesman"] == sel_sales)
         mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
 
-    val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Harga Jual"].sum()
+    # Menjumlahkan murni kolom "Total Nilai"
+    val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Nilai"].sum()
     val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
 
     st.divider()
