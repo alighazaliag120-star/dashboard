@@ -121,9 +121,8 @@ with tab2:
     else:
         st.info("Tidak ada data PUR yang cocok dengan filter tanggal tersebut.")
 
-
 # =================================================================
-# TAB 3: SQ TO SO (Dua Tabel & Filter Week)
+# TAB 3: SQ TO SO (Tetap Sama)
 # =================================================================
 with tab3:
     st.header("Dashboard SQ to SO")
@@ -132,7 +131,6 @@ with tab3:
     df_sq_to_so.columns = df_sq_to_so.columns.str.strip()
     df_sq_baru.columns = df_sq_baru.columns.str.strip()
 
-    # --- BAGIAN 1: SQ TO SO ---
     st.subheader("1. Monitoring SQ to SO")
     cust_list1 = df_sq_to_so["Customer"].dropna().unique().tolist()
     filter_cust1 = st.selectbox("Filter Customer (SQ to SO)", ["Semua"] + sorted(cust_list1), key="f_cust1")
@@ -145,8 +143,6 @@ with tab3:
     st.dataframe(df1_f, use_container_width=True)
 
     st.divider()
-
-    # --- BAGIAN 2: DATA SQ BARU (Filter Customer & Week) ---
     st.subheader("2. Monitoring Data SQ Baru")
     cf1, cf2 = st.columns(2)
     with cf1:
@@ -166,55 +162,47 @@ with tab3:
     c2b.metric("Subtotal (Non-Draft)", f"Rp {subtotal2:,.0f}".replace(",", "."))
     st.dataframe(df2_f, use_container_width=True)
 
-
 # =================================================================
-# TAB 4: KPI MARKETING (Scorecard Tanpa List)
+# TAB 4: KPI MARKETING (Tetap Sama dengan Perbaikan Skiprows)
 # =================================================================
 with tab4:
     st.header("KPI Marketing Performance")
-    # Membaca 2 sheet dari data_kpi.xlsx
-    df_si = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
-    df_sq_kpi = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
-    df_si.columns = df_si.columns.str.strip()
-    df_sq_kpi.columns = df_sq_kpi.columns.str.strip()
+    try:
+        df_si = pd.read_excel("data_kpi.xlsx", sheet_name="SI", skiprows=2)
+        df_sq_kpi = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
+        df_si.columns = df_si.columns.str.strip()
+        df_sq_kpi.columns = df_sq_kpi.columns.str.strip()
 
-    # Konversi Tanggal
-    df_si["Tanggal"] = pd.to_datetime(df_si["Tanggal"], errors="coerce")
-    df_sq_kpi["Tanggal"] = pd.to_datetime(df_sq_kpi["Tanggal"], errors="coerce")
+        df_si["Tanggal"] = pd.to_datetime(df_si["Tanggal"], errors="coerce")
+        df_sq_kpi["Tanggal"] = pd.to_datetime(df_sq_kpi["Tanggal"], errors="coerce")
 
-    # Filter Area
-    f_col1, f_col2, f_col3 = st.columns(3)
-    with f_col1:
-        years = sorted(df_si["Tanggal"].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
-        sel_year = st.selectbox("Tahun", years, key="kpi_y")
-    with f_col2:
-        months = {1:"Januari", 2:"Februari", 3:"Maret", 4:"April", 5:"Mei", 6:"Juni", 
-                  7:"Juli", 8:"Agustus", 9:"September", 10:"Oktober", 11:"November", 12:"Desember"}
-        sel_month = st.selectbox("Bulan", list(months.keys()), format_func=lambda x: months[x], key="kpi_m")
-    with f_col3:
-        list_s = sorted(list(set(df_si["Salesman"].dropna().unique().tolist() + df_sq_kpi["Sales"].dropna().unique().tolist())))
-        sel_sales = st.selectbox("Salesman", ["Semua"] + list_s, key="kpi_s")
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            years = sorted(df_si["Tanggal"].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
+            if not years: years = [today.year]
+            sel_year = st.selectbox("Tahun", years, key="kpi_y")
+        with f_col2:
+            months = {1:"Januari", 2:"Februari", 3:"Maret", 4:"April", 5:"Mei", 6:"Juni", 
+                      7:"Juli", 8:"Agustus", 9:"September", 10:"Oktober", 11:"November", 12:"Desember"}
+            sel_month = st.selectbox("Bulan", list(months.keys()), format_func=lambda x: months[x], key="kpi_m")
+        with f_col3:
+            list_s = sorted(list(set(df_si["Salesman"].dropna().unique().tolist() + df_sq_kpi["Sales"].dropna().unique().tolist())))
+            sel_sales = st.selectbox("Salesman", ["Semua"] + list_s, key="kpi_s")
 
-    # Logika Filter
-    mask_si = (df_si["Tanggal"].dt.year == sel_year) & (df_si["Tanggal"].dt.month == sel_month)
-    if sel_sales != "Semua": mask_si &= (df_si["Salesman"] == sel_sales)
-    
-    mask_sq = (df_sq_kpi["Tanggal"].dt.year == sel_year) & (df_sq_kpi["Tanggal"].dt.month == sel_month)
-    if sel_sales != "Semua": mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
+        mask_si = (df_si["Tanggal"].dt.year == sel_year) & (df_si["Tanggal"].dt.month == sel_month)
+        if sel_sales != "Semua": mask_si &= (df_si["Salesman"] == sel_sales)
+        
+        mask_sq = (df_sq_kpi["Tanggal"].dt.year == sel_year) & (df_sq_kpi["Tanggal"].dt.month == sel_month)
+        if sel_sales != "Semua": mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
 
-    # Hitung Values (Kecuali Draft)
-    val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Harga Jual"].sum()
-    val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
+        val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Harga Jual"].sum()
+        val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
 
-    # Tampilan Scorecard
-    st.divider()
-    st.subheader(f"Ringkasan KPI: {months[sel_month]} {sel_year}")
-    m1, m2 = st.columns(2)
-    m1.metric(f"Total SI - {sel_sales}", f"Rp {val_si:,.0f}".replace(",", "."))
-    m2.metric(f"Total SQ - {sel_sales}", f"Rp {val_sq:,.0f}".replace(",", "."))
+        st.divider()
+        st.subheader(f"Ringkasan KPI: {months[sel_month]} {sel_year}")
+        m1, m2 = st.columns(2)
+        m1.metric(f"Total SI - {sel_sales}", f"Rp {val_si:,.0f}".replace(",", "."))
+        m2.metric(f"Total SQ - {sel_sales}", f"Rp {val_sq:,.0f}".replace(",", "."))
 
-    st.divider()
-    # Aktivitas Transaksi (Opsional Info)
-    i1, i2 = st.columns(2)
-    i1.info(f"Transaksi SI Berjalan: {len(df_si[mask_si & (df_si['Status'] != 'Draft')])}")
-    i2.info(f"Transaksi SQ Berjalan: {len(df_sq_kpi[mask_sq & (df_sq_kpi['Status'] != 'Draft')])}")
+    except Exception as e:
+        st.error(f"Terjadi kesalahan di Tab 4: {e}")
