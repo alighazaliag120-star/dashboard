@@ -258,11 +258,11 @@ elif menu_pilihan == "Laporan Weekly":
             col_po = "No PO"
             total_po_unik = df_filtered[col_po].nunique() if col_po in df_filtered.columns else 0
 
-            col_nom = "SUM of ON SITE"
-            if col_nom in df_filtered.columns:
-                nominal_val = pd.to_numeric(df_filtered[col_nom].astype(str).str.replace('[^0-9]', '', regex=True), errors='coerce').sum()
-            else:
-                nominal_val = 0
+            col_nom = "Nominal PO"
+if col_nom in df_filtered.columns:
+    nominal_val = pd.to_numeric(df_filtered[col_nom].astype(str).str.replace('[^0-9]', '', regex=True), errors='coerce').sum()
+else:
+    nominal_val = 0
 
             m1.metric("Total Unit PO (Unik)", f"{total_po_unik} PO")
             m2.metric("Total Nominal PO", f"Rp {nominal_val:,.0f}".replace(",", "."))
