@@ -48,7 +48,7 @@ with st.sidebar:
     st.title("Main Menu")
     menu_pilihan = st.radio(
         "Pilih Dashboard:",
-        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly"], # <-- "HOME" ditambahkan di sini
+        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly"], 
         index=0 
     )
     st.divider()
@@ -60,10 +60,42 @@ today = date.today()
 # LOGIKA TAMPILAN BERDASARKAN MENU SIDEBAR
 # =================================================================
 
+# --- MENU UTAMA: HOME ---
+if menu_pilihan == "HOME":
+    # Membuat judul rata tengah
+    st.markdown("<h1 style='text-align: center;'>DASHBOARD MONITORING</h1>", unsafe_allow_html=True)
+    st.divider()
+
+    # Tempat untuk Logo / Foto
+    col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
+    with col_img2:
+        st.info("💡 Tempat Foto/Logo: Masukkan file gambar ke folder, lalu aktifkan kode st.image()")
+        # st.image("logo.png", use_container_width=True) 
+
+    st.write("") 
+    st.write("")
+
+    # Tombol Akses Cepat (Link)
+    st.subheader("🔗 Quick Access Links")
+    
+    # Membagi layout menjadi 3 kolom agar tombol tidak terlalu panjang
+    c_link1, c_link2, c_link3 = st.columns(3)
+    
+    with c_link1:
+        st.link_button("🌐 BRP SIBIMA", "https://eas.sibima.id/", use_container_width=True)
+        
+    with c_link2:
+        st.link_button("📊 Monitoring SIBIMA", "https://s.id/DashboardSibima", use_container_width=True)
+        
+    with c_link3:
+        # Kolom ketiga sengaja dibiarkan kosong untuk cadangan link selanjutnya
+        st.write("")
+
 # --- MENU 1: NPR (EXCEL) ---
-if menu_pilihan == "NPR":
+elif menu_pilihan == "NPR":
     st.header("Dashboard NPR")
     df_npr = pd.read_excel("data_npr.xlsx")
+    # (Pastikan kode NPR kamu selanjutnya berada di posisi menjorok ke dalam sejajar dengan df_npr di atas)
     df_npr.columns = df_npr.columns.str.strip()
     df_npr["Tanggal Complete"] = pd.to_datetime(df_npr["Tanggal Complete"], errors="coerce")
     
