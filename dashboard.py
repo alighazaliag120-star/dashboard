@@ -48,7 +48,7 @@ with st.sidebar:
     st.title("Main Menu")
     menu_pilihan = st.radio(
         "Pilih Dashboard:",
-        ["NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly"],
+        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly"], # <-- "HOME" ditambahkan di sini
         index=0 
     )
     st.divider()
