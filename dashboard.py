@@ -41,6 +41,32 @@ def load_gsheet_all():
         st.error(f"Gagal koneksi database: {e}")
         return pd.DataFrame()
 
+def load_gsheet_bpv():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    spreadsheet_id = "1fjr-r_FlaAE-WOrHmoC9Ai2-Kxbafzxt1Mr5MciIGOU"
+    
+    try:
+        if os.path.exists("kunci_data.json"):
+            creds = ServiceAccountCredentials.from_json_keyfile_name("kunci_data.json", scope)
+        else:
+            raw_json_str = st.secrets["gcp_service_account"]["content"]
+            creds_info = json.loads(raw_json_str)
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
+            
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key(spreadsheet_id).get_worksheet(0) # Mengambil sheet pertama
+        data = sheet.get_all_values()
+        
+        if len(data) > 0:
+            # Asumsi header ada di baris pertama
+            df = pd.DataFrame(data[1:], columns=data[0])
+            df.columns = df.columns.str.strip().str.upper() # Seragamkan nama kolom jadi huruf kapital
+            return df
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Gagal koneksi database BPV: {e}")
+        return pd.DataFrame()
+
 # =================================================================
 # SIDEBAR NAVIGATION
 # =================================================================
@@ -48,7 +74,7 @@ with st.sidebar:
     st.title("Main Menu")
     menu_pilihan = st.radio(
         "Pilih Dashboard:",
-        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly"], 
+        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly", "Status BPV"], 
         index=0 
     )
     st.divider()
@@ -352,3 +378,61 @@ elif menu_pilihan == "Laporan Weekly":
 
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis tampilan: {e}")
+
+# --- MENU BARU: STATUS BPV ---
+elif menu_pilihan == "Status BPV":
+    st.header("🔔 Notifikasi Status BPV")
+    st.caption(f"📅 {tanggal_sekarang_str}")
+    
+    try:
+        df_bpv = load_gsheet_bpv()
+        
+        if df_bpv.empty:
+            st.warning("Data BPV tidak tersedia atau gagal memuat.")
+        else:
+            # --- PROSES CLEANING TANGGAL ---
+            if 'TANGGAL BPV' in df_bpv.columns and 'TANGGAL BAYAR' in df_bpv.columns:
+                df_bpv['TANGGAL BPV'] = pd.to_datetime(df_bpv['TANGGAL BPV'], format='mixed', errors='coerce')
+                df_bpv['TANGGAL BAYAR'] = pd.to_datetime(df_bpv['TANGGAL BAYAR'], format='mixed', errors='coerce')
+                
+                # --- LOGIKA FILTER HARI INI ---
+                hari_ini_pd = pd.to_datetime(today).date()
+                
+                # Filter BPV Baru
+                bpv_baru = df_bpv[df_bpv['TANGGAL BPV'].dt.date == hari_ini_pd]
+                
+                # Filter BPV Dibayar
+                bpv_dibayar = df_bpv[df_bpv['TANGGAL BAYAR'].dt.date == hari_ini_pd]
+                
+                # --- UI: ANGKA HIGHLIGHT ---
+                c1, c2 = st.columns(2)
+                c1.metric("BPV Baru Masuk Hari Ini", f"{len(bpv_baru)} Dokumen")
+                c2.metric("BPV Dibayar Hari Ini", f"{len(bpv_dibayar)} Dokumen")
+                
+                st.divider()
+                
+                # --- UI: TABEL BPV BARU ---
+                st.subheader("📥 Rincian BPV Baru Hari Ini")
+                if not bpv_baru.empty:
+                    st.info(f"Ada {len(bpv_baru)} BPV baru yang masuk hari ini.")
+                    # Memfilter kolom jika tersedia agar rapi
+                    kolom_tampil_baru = [col for col in ['PO TRANSAKSI', 'PIC', 'TANGGAL BPV', 'CUSTOMER', 'SUPPLIER', 'TOTAL'] if col in df_bpv.columns]
+                    st.dataframe(bpv_baru[kolom_tampil_baru] if kolom_tampil_baru else bpv_baru, use_container_width=True)
+                else:
+                    st.markdown("*Belum ada BPV baru yang masuk hari ini.*")
+                    
+                st.write("") # Spasi
+                
+                # --- UI: TABEL BPV DIBAYAR ---
+                st.subheader("💸 Rincian BPV Dibayar Hari Ini")
+                if not bpv_dibayar.empty:
+                    st.success(f"Hore! Ada {len(bpv_dibayar)} BPV yang tercatat telah dibayar hari ini.")
+                    kolom_tampil_bayar = [col for col in ['PO TRANSAKSI', 'TANGGAL BAYAR', 'CUSTOMER', 'SUPPLIER', 'TOTAL', 'STATUS PO'] if col in df_bpv.columns]
+                    st.dataframe(bpv_dibayar[kolom_tampil_bayar] if kolom_tampil_bayar else bpv_dibayar, use_container_width=True)
+                else:
+                    st.markdown("*Belum ada riwayat BPV yang dibayar hari ini.*")
+            else:
+                st.error("Kolom 'TANGGAL BPV' atau 'TANGGAL BAYAR' tidak ditemukan di Spreadsheet. Pastikan ejaan kolomnya sesuai.")
+
+    except Exception as e:
+        st.error(f"Terjadi kesalahan teknis saat memproses data BPV: {e}")
