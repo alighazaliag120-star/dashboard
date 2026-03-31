@@ -83,7 +83,7 @@ if menu_pilihan == "HOME":
     # Tombol Akses Cepat (Link)
     st.subheader("🔗 Quick Access Links")
     
-    # Membagi layout menjadi 3 kolom per baris agar tombol rapi
+    # Membagi layout menjadi 3 kolom per baris
     # --- Baris Pertama ---
     c_link1, c_link2, c_link3 = st.columns(3)
     
@@ -106,10 +106,9 @@ if menu_pilihan == "HOME":
         st.link_button("📨 OTS ALL RFQ", "https://s.id/RFQSIBIMA", use_container_width=True)
         
     with c_link6:
-        # Kolom sengaja dibiarkan kosong untuk cadangan link selanjutnya
-        st.write("")
+        st.link_button("📧 Hostinger", "https://mail.hostinger.com", use_container_width=True)
 
-        
+
 # --- MENU 1: NPR (EXCEL) ---
 elif menu_pilihan == "NPR":
     st.header("Dashboard NPR")
