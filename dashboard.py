@@ -167,7 +167,7 @@ if menu_pilihan == "HOME":
     except Exception as e:
         # Tampilkan error aslinya agar kita tahu masalahnya apa
         st.error(f"Gagal memuat chart BPV: {e}")
-        
+
     # --- FILTER UNTUK NOMOR 2 & 3 ---
     st.write("⚙️ **Filter Grafik KPI & Trend**")
     f_col1, f_col2 = st.columns(2)
@@ -295,40 +295,87 @@ elif menu_pilihan == "PUR":
 # --- MENU 3: SQ TO SO (EXCEL) ---
 elif menu_pilihan == "SQ to SO":
     st.header("Dashboard SQ to SO")
-    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    st.caption(f"📅 {tanggal_sekarang_str}")
     
-    df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
-    df_sq_baru = pd.read_excel("data_sq.xlsx")
+    # --- MEMBACA KEDUA DATABASE (PENTING!) ---
+    try:
+        df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
+        df_sq_baru = pd.read_excel("data_sq.xlsx") # Baris ini yang tadi hilang
+    except Exception as e:
+        st.error(f"Gagal membaca file Excel: {e}")
+        st.stop()
     
+    # --- BAGIAN 1: MONITORING SQ TO SO ---
     st.subheader("1. Monitoring SQ to SO")
     cust_list1 = df_sq_to_so["Customer"].dropna().unique().tolist()
     filter_cust1 = st.selectbox("Filter Customer (SQ to SO)", ["Semua"] + sorted(cust_list1), key="f_cust1")
     df1_f = df_sq_to_so if filter_cust1 == "Semua" else df_sq_to_so[df_sq_to_so["Customer"] == filter_cust1]
     
-    subtotal1 = df1_f[df1_f["Status"] != "Draft"]["Total Barang"].sum()
-    c1a, c1b = st.columns(2)
-    c1a.metric("Total SQ to SO", len(df1_f))
-    c1b.metric("Subtotal (Non-Draft)", f"Rp {subtotal1:,.0f}".replace(",", "."))
-    st.dataframe(df1_f, use_container_width=True)
+    status_valid = ["Complete", "In Progress"]
+    
+    # A. KELOMPOK: SQ TO SO
+    df1_to_so = df1_f[df1_f["Status"].str.strip().isin(status_valid)]
+    qty_to_so = df1_to_so["No Transaksi"].nunique()
+    val_to_so = df1_to_so["Total Barang"].sum()
 
+    # B. KELOMPOK: SQ PENDING
+    df1_pending = df1_f[~df1_f["Status"].str.strip().isin(status_valid)]
+    qty_pending = df1_pending["No Transaksi"].nunique()
+    val_pending = df1_pending["Total Barang"].sum()
+
+    # TAMPILAN METRIK BAGIAN 1
+    st.markdown("#### ✅ SQ To SO (Complete & In Progress)")
+    m1, m2 = st.columns(2)
+    m1.metric("Qty SQ (Unik)", f"{qty_to_so} SQ")
+    m2.metric("Total Value", f"Rp {val_to_so:,.0f}".replace(",", "."))
+
+    st.markdown("#### ⏳ SQ Pending (Draft & Others)")
+    m3, m4 = st.columns(2)
+    m3.metric("Qty SQ (Unik)", f"{qty_pending} SQ")
+    m4.metric("Total Value", f"Rp {val_pending:,.0f}".replace(",", "."))
+    
     st.divider()
+    st.dataframe(df1_f, width="stretch")
+
+   # --- BAGIAN 2: MONITORING DATA SQ BARU ---
     st.subheader("2. Monitoring Data SQ Baru")
+    
+    # Filter untuk Bagian 2
     cf1, cf2 = st.columns(2)
     with cf1:
-        cust_list2 = df_sq_baru["Customer"].dropna().unique().tolist()
-        filter_cust2 = st.selectbox("Filter Customer", ["Semua"] + sorted(cust_list2), key="f_cust2")
+        # Pastikan df_sq_baru sudah terbaca di atas
+        list_cust2 = ["Semua"] + sorted(df_sq_baru["Customer"].dropna().unique().tolist())
+        filter_cust2 = st.selectbox("Filter Customer", list_cust2, key="f_cust2")
     with cf2:
-        week_list = df_sq_baru["Week"].dropna().unique().tolist()
-        filter_week = st.selectbox("Filter Week", ["Semua"] + sorted(week_list), key="f_week")
+        list_week2 = ["Semua"] + sorted(df_sq_baru["Week"].dropna().unique().tolist())
+        filter_week = st.selectbox("Filter Week", list_week2, key="f_week")
     
     df2_f = df_sq_baru.copy()
-    if filter_cust2 != "Semua": df2_f = df2_f[df2_f["Customer"] == filter_cust2]
-    if filter_week != "Semua": df2_f = df2_f[df2_f["Week"] == filter_week]
+    if filter_cust2 != "Semua": 
+        df2_f = df2_f[df2_f["Customer"] == filter_cust2]
+    if filter_week != "Semua": 
+        df2_f = df2_f[df2_f["Week"] == filter_week]
     
-    subtotal2 = df2_f[df2_f["Status"] != "Draft"]["Sub Total"].sum()
-    c2a, c2b = st.columns(2)
-    c2a.metric("Total SQ Baru", len(df2_f))
-    c2b.metric("Subtotal (Non-Draft)", f"Rp {subtotal2:,.0f}".replace(",", "."))
+    # --- PERBAIKAN LOGIKA SESUAI INSTRUKSI ---
+    # 1. Filter Selain Draft (Gunakan .str sebelum .lower())
+    df2_non_draft = df2_f[df2_f["Status"].str.strip().str.lower() != "draft"]
+    
+    # 2. QTY SQ Selain Draft (Unik)
+    # Kita cek dulu apakah kolom 'No Transaksi' ada, jika tidak pakai kolom indeks ke-1
+    col_id_sq2 = "No Transaksi" if "No Transaksi" in df2_f.columns else df2_f.columns[1]
+    qty_sq_non_draft = df2_non_draft[col_id_sq2].nunique()
+    
+    # 3. Total Value (Menjumlahkan semua baris/tidak unik)
+    # Menggunakan kolom 'Sub Total' sesuai file data_sq.xlsx
+    val_sq_non_draft = df2_non_draft["Sub Total"].sum()
+
+    # --- TAMPILAN METRIK BAGIAN 2 ---
+    st.markdown("#### 📊 Ringkasan SQ Baru (Selain Draft)")
+    b1, b2 = st.columns(2)
+    b1.metric("Qty SQ (Unik)", f"{qty_sq_non_draft} SQ")
+    b2.metric("Total Value", f"Rp {val_sq_non_draft:,.0f}".replace(",", "."))
+    
+    st.divider()
     st.dataframe(df2_f, use_container_width=True)
 
 # --- MENU 4: KPI MARKETING (EXCEL) ---
