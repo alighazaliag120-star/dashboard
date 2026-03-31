@@ -271,6 +271,14 @@ elif menu_pilihan == "Laporan Weekly":
         else:
             df_all.columns = df_all.columns.str.strip()
 
+            # --- FIX: Bersihkan baris kosong pada No PO agar tidak ikut terhitung ---
+            if "No PO" in df_all.columns:
+                # 1. Buang nilai yang benar-benar kosong (NaN/Null bawaan Pandas)
+                df_all = df_all.dropna(subset=["No PO"])
+                # 2. Buang yang berupa string kosong (""), spasi tersembunyi, atau teks "nan"
+                df_all = df_all[df_all["No PO"].astype(str).str.strip() != ""]
+                df_all = df_all[~df_all["No PO"].astype(str).str.lower().isin(["nan", "none", "null"])]
+
             st.subheader("Filter Breakdown")
             f_bln, f_cust, f_week, f_tgl = st.columns(4)
             
