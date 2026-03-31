@@ -73,7 +73,7 @@ def load_gsheet_bpv():
     except Exception as e:
         st.error(f"Gagal koneksi database BPV: {e}")
         return pd.DataFrame()
-        
+
 # =================================================================
 # SIDEBAR NAVIGATION
 # =================================================================
@@ -388,7 +388,7 @@ elif menu_pilihan == "Laporan Weekly":
 
 # --- MENU BARU: STATUS BPV ---
 elif menu_pilihan == "Status BPV":
-    st.header("🔔 Notifikasi Status BPV")
+    st.header("🔔 Monitoring & Notifikasi BPV")
     st.caption(f"📅 {tanggal_sekarang_str}")
     
     try:
@@ -398,48 +398,63 @@ elif menu_pilihan == "Status BPV":
             st.warning("Data BPV tidak tersedia atau gagal memuat.")
         else:
             # --- PROSES CLEANING TANGGAL ---
-            if 'TANGGAL BPV' in df_bpv.columns and 'TANGGAL BAYAR' in df_bpv.columns:
-                df_bpv['TANGGAL BPV'] = pd.to_datetime(df_bpv['TANGGAL BPV'], format='mixed', errors='coerce')
-                df_bpv['TANGGAL BAYAR'] = pd.to_datetime(df_bpv['TANGGAL BAYAR'], format='mixed', errors='coerce')
+            # Pastikan nama kolom sesuai dengan hasil strip() dan upper() di fungsi load
+            col_tgl_bpv = 'TANGGAL BPV'
+            col_tgl_bayar = 'TANGGAL BAYAR'
+
+            if col_tgl_bpv in df_bpv.columns and col_tgl_bayar in df_bpv.columns:
+                df_bpv[col_tgl_bpv] = pd.to_datetime(df_bpv[col_tgl_bpv], format='mixed', errors='coerce')
+                df_bpv[col_tgl_bayar] = pd.to_datetime(df_bpv[col_tgl_bayar], format='mixed', errors='coerce')
                 
-                # --- LOGIKA FILTER HARI INI ---
-                hari_ini_pd = pd.to_datetime(today).date()
-                
-                # Filter BPV Baru
-                bpv_baru = df_bpv[df_bpv['TANGGAL BPV'].dt.date == hari_ini_pd]
-                
-                # Filter BPV Dibayar
-                bpv_dibayar = df_bpv[df_bpv['TANGGAL BAYAR'].dt.date == hari_ini_pd]
-                
-                # --- UI: ANGKA HIGHLIGHT ---
-                c1, c2 = st.columns(2)
-                c1.metric("BPV Baru Masuk Hari Ini", f"{len(bpv_baru)} Dokumen")
-                c2.metric("BPV Dibayar Hari Ini", f"{len(bpv_dibayar)} Dokumen")
-                
-                st.divider()
-                
-                # --- UI: TABEL BPV BARU ---
-                st.subheader("📥 Rincian BPV Baru Hari Ini")
-                if not bpv_baru.empty:
-                    st.info(f"Ada {len(bpv_baru)} BPV baru yang masuk hari ini.")
-                    # Memfilter kolom jika tersedia agar rapi
-                    kolom_tampil_baru = [col for col in ['PO TRANSAKSI', 'PIC', 'TANGGAL BPV', 'CUSTOMER', 'SUPPLIER', 'TOTAL'] if col in df_bpv.columns]
-                    st.dataframe(bpv_baru[kolom_tampil_baru] if kolom_tampil_baru else bpv_baru, use_container_width=True)
-                else:
-                    st.markdown("*Belum ada BPV baru yang masuk hari ini.*")
+                # --- FILTER RENTANG WAKTU ---
+                st.subheader("🔍 Filter Periode")
+                tgl_filter = st.date_input(
+                    "Pilih Rentang Tanggal:",
+                    value=(today - timedelta(days=3), today), # Default melihat 3 hari terakhir
+                    key="filter_tgl_bpv"
+                )
+
+                if len(tgl_filter) == 2:
+                    start_date, end_date = tgl_filter
                     
-                st.write("") # Spasi
-                
-                # --- UI: TABEL BPV DIBAYAR ---
-                st.subheader("💸 Rincian BPV Dibayar Hari Ini")
-                if not bpv_dibayar.empty:
-                    st.success(f"Hore! Ada {len(bpv_dibayar)} BPV yang tercatat telah dibayar hari ini.")
-                    kolom_tampil_bayar = [col for col in ['PO TRANSAKSI', 'TANGGAL BAYAR', 'CUSTOMER', 'SUPPLIER', 'TOTAL', 'STATUS PO'] if col in df_bpv.columns]
-                    st.dataframe(bpv_dibayar[kolom_tampil_bayar] if kolom_tampil_bayar else bpv_dibayar, use_container_width=True)
+                    # Logika Filter Berdasarkan Rentang yang Dipilih
+                    bpv_baru = df_bpv[
+                        (df_bpv[col_tgl_bpv].dt.date >= start_date) & 
+                        (df_bpv[col_tgl_bpv].dt.date <= end_date)
+                    ]
+                    
+                    bpv_dibayar = df_bpv[
+                        (df_bpv[col_tgl_bayar].dt.date >= start_date) & 
+                        (df_bpv[col_tgl_bayar].dt.date <= end_date)
+                    ]
+                    
+                    # --- UI: ANGKA HIGHLIGHT ---
+                    st.divider()
+                    c1, c2 = st.columns(2)
+                    c1.metric(f"BPV Masuk ({start_date} s/d {end_date})", f"{len(bpv_baru)} Dokumen")
+                    c2.metric(f"BPV Dibayar ({start_date} s/d {end_date})", f"{len(bpv_dibayar)} Dokumen")
+                    
+                    # --- UI: TABEL BPV BARU ---
+                    st.subheader("📥 Rincian BPV Masuk di Periode Ini")
+                    if not bpv_baru.empty:
+                        kolom_tampil_baru = [col for col in ['PO TRANSAKSI', 'PIC', 'TANGGAL BPV', 'CUSTOMER', 'SUPPLIER', 'TOTAL'] if col in df_bpv.columns]
+                        st.dataframe(bpv_baru[kolom_tampil_baru] if kolom_tampil_baru else bpv_baru, use_container_width=True)
+                    else:
+                        st.info("Tidak ada BPV baru yang masuk pada rentang tanggal ini.")
+                        
+                    st.write("") 
+                    
+                    # --- UI: TABEL BPV DIBAYAR ---
+                    st.subheader("💸 Rincian BPV Dibayar di Periode Ini")
+                    if not bpv_dibayar.empty:
+                        kolom_tampil_bayar = [col for col in ['PO TRANSAKSI', 'TANGGAL BAYAR', 'CUSTOMER', 'SUPPLIER', 'TOTAL', 'STATUS PO'] if col in df_bpv.columns]
+                        st.dataframe(bpv_dibayar[kolom_tampil_bayar] if kolom_tampil_bayar else bpv_dibayar, use_container_width=True)
+                    else:
+                        st.info("Tidak ada rekaman BPV yang dibayar pada rentang tanggal ini.")
                 else:
-                    st.markdown("*Belum ada riwayat BPV yang dibayar hari ini.*")
+                    st.warning("Silakan pilih rentang tanggal (klik tanggal mulai dan tanggal akhir).")
             else:
-                st.error("Kolom 'TANGGAL BPV' atau 'TANGGAL BAYAR' tidak ditemukan di Spreadsheet. Pastikan ejaan kolomnya sesuai.")
+                st.error(f"Kolom tanggal tidak ditemukan. Kolom yang tersedia: {df_bpv.columns.tolist()}")
 
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis saat memproses data BPV: {e}")
