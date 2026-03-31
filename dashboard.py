@@ -105,41 +105,121 @@ tanggal_sekarang_str = f"{nama_hari}, {today.day} {nama_bulan} {today.year}"
 
 # --- MENU UTAMA: HOME ---
 if menu_pilihan == "HOME":
-    # Membuat judul rata tengah beserta tanggalnya
     st.markdown("<h1 style='text-align: center;'>DASHBOARD MONITORING</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: gray; font-size: 18px;'>📅 {tanggal_sekarang_str}</p>", unsafe_allow_html=True)
     st.divider()
 
-    st.write("") 
-    st.write("")
-
-    # Tombol Akses Cepat (Link)
+    # --- QUICK ACCESS LINKS ---
     st.subheader("🔗 Quick Access Links")
-    
-    # Membagi layout menjadi 3 kolom per baris
-    # --- Baris Pertama ---
     c_link1, c_link2, c_link3 = st.columns(3)
-    
-    with c_link1:
-        st.link_button("🌐 BRP SIBIMA", "https://eas.sibima.id/", use_container_width=True)
-        
-    with c_link2:
-        st.link_button("📊 Monitoring SIBIMA", "https://s.id/DashboardSibima", use_container_width=True)
-        
-    with c_link3:
-        st.link_button("📈 OTS ALL Marketing", "https://s.id/MonitoringOTSAll", use_container_width=True)
+    with c_link1: st.link_button("🌐 BRP SIBIMA", "https://eas.sibima.id/", width="stretch")
+    with c_link2: st.link_button("📊 Monitoring SIBIMA", "https://s.id/DashboardSibima", width="stretch")
+    with c_link3: st.link_button("📈 OTS ALL Marketing", "https://s.id/MonitoringOTSAll", width="stretch")
 
-    # --- Baris Kedua ---
     c_link4, c_link5, c_link6 = st.columns(3)
+    with c_link4: st.link_button("📝 ALL BPV SIBIMA", "https://docs.google.com/spreadsheets/d/1fjr-r_FlaAE-WOrHmoC9Ai2-Kxbafzxt1Mr5MciIGOU/edit?gid=0#gid=0", width="stretch")
+    with c_link5: st.link_button("📨 OTS ALL RFQ", "https://s.id/RFQSIBIMA", width="stretch")
+    with c_link6: st.link_button("📧 Hostinger", "https://mail.hostinger.com", width="stretch")
+
+    st.divider()
     
-    with c_link4:
-        st.link_button("📝 ALL BPV SIBIMA", "https://docs.google.com/spreadsheets/d/1fjr-r_FlaAE-WOrHmoC9Ai2-Kxbafzxt1Mr5MciIGOU/edit?gid=0#gid=0", use_container_width=True)
+    # --- SECTION CHART ---
+    st.subheader("📊 Business Overview")
+
+    # 1. DATA BPV (Pie Chart - Persentase Bayar vs Belum)
+    try:
+        df_bpv_home = load_gsheet_bpv()
+        if not df_bpv_home.empty:
+            st.write("**💰 Persentase Status Pembayaran BPV**")
+            
+            # Pastikan kolom dibersihkan lagi di sini untuk jaga-jaga
+            df_bpv_home.columns = df_bpv_home.columns.str.strip().str.upper()
+            
+            # Gunakan nama kolom yang tepat sesuai hasil load_gsheet_bpv
+            target_col = 'TANGGAL BAYAR' 
+            
+            if target_col in df_bpv_home.columns:
+                # Logika: Cek apakah kolom kosong, berisi '-', atau 'nan'
+                def cek_status(val):
+                    v = str(val).strip().lower()
+                    if v in ['', '-', 'nan', 'none', 'null', '0']:
+                        return 'Belum Dibayar'
+                    return 'Dibayar'
+
+                df_bpv_home['Status Real'] = df_bpv_home[target_col].apply(cek_status)
+                status_pie = df_bpv_home['Status Real'].value_counts()
+                
+                # Gunakan st.plotly_chart agar lebih cantik
+                import plotly.express as px
+                fig = px.pie(
+                    values=status_pie.values, 
+                    names=status_pie.index, 
+                    hole=0.4,
+                    color=status_pie.index,
+                    color_discrete_map={'Dibayar':'#2ca02c', 'Belum Dibayar':'#d62728'}
+                )
+                fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(f"Kolom {target_col} tidak ditemukan untuk grafik.")
+        else:
+            st.info("Data BPV kosong di Spreadsheet.")
+    except Exception as e:
+        # Tampilkan error aslinya agar kita tahu masalahnya apa
+        st.error(f"Gagal memuat chart BPV: {e}")
         
-    with c_link5:
-        st.link_button("📨 OTS ALL RFQ", "https://s.id/RFQSIBIMA", use_container_width=True)
+    # --- FILTER UNTUK NOMOR 2 & 3 ---
+    st.write("⚙️ **Filter Grafik KPI & Trend**")
+    f_col1, f_col2 = st.columns(2)
+    with f_col1:
+        # Filter Tahun
+        sel_year_home = st.selectbox("Pilih Tahun Dashboard", [2026, 2025], key="h_year")
+    with f_col2:
+        # Filter Customer untuk Trend PO
+        df_all_raw = load_gsheet_all()
+        list_cust_home = ["Semua"] + sorted(df_all_raw["Customer"].unique().tolist()) if not df_all_raw.empty else ["Semua"]
+        sel_cust_home = st.selectbox("Filter Customer (Trend PO)", list_cust_home, key="h_cust")
+
+    # 2. KPI MARKETING (SI vs SQ Terbanyak)
+    # Sumber: Excel KPI
+    st.write(f"**🏆 Performa Salesman - {sel_year_home}**")
+    try:
+        df_si_home = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
+        df_sq_home = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
         
-    with c_link6:
-        st.link_button("📧 Hostinger", "https://mail.hostinger.com", use_container_width=True)
+        # Filter Tahun
+        df_si_home['Tanggal'] = pd.to_datetime(df_si_home['Tanggal'], errors='coerce')
+        df_sq_home['Tanggal'] = pd.to_datetime(df_sq_home['Tanggal'], errors='coerce')
+        df_si_f = df_si_home[df_si_home['Tanggal'].dt.year == sel_year_home]
+        df_sq_f = df_sq_home[df_sq_home['Tanggal'].dt.year == sel_year_home]
+
+        kpi1, kpi2 = st.columns(2)
+        with kpi1:
+            st.write("Penyumbang SI Terbanyak")
+            si_chart = df_si_f.groupby('Salesman')['Total Nilai'].sum().sort_values(ascending=False).head(5)
+            st.bar_chart(si_chart)
+        with kpi2:
+            st.write("Penyumbang SQ Terbanyak")
+            sq_chart = df_sq_f.groupby('Sales')['Sub Total'].sum().sort_values(ascending=False).head(5)
+            st.bar_chart(sq_chart)
+    except:
+        st.error("Gagal memuat data KPI Marketing")
+
+    # 3. TREND JUMLAH PO JHONLIN (Minggu ke Minggu)
+    # Sumber: Spreadsheet All
+    st.write(f"**📈 Trend Weekly PO Jhonlin - {sel_cust_home}**")
+    try:
+        if not df_all_raw.empty:
+            df_trend = df_all_raw.copy()
+            # Filter Customer jika bukan 'Semua'
+            if sel_cust_home != "Semua":
+                df_trend = df_trend[df_trend["Customer"] == sel_cust_home]
+            
+            # Hitung jumlah PO per Week
+            trend_data = df_trend.groupby('Week').size()
+            st.line_chart(trend_data)
+    except:
+        st.info("Data Trend PO sedang diproses...")
 
 
 # --- MENU 1: NPR (EXCEL) ---
