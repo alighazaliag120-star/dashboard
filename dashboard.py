@@ -54,19 +54,26 @@ def load_gsheet_bpv():
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
             
         client = gspread.authorize(creds)
-        sheet = client.open_by_key(spreadsheet_id).get_worksheet(0) # Mengambil sheet pertama
+        # Mengambil sheet pertama ("BPV")
+        sheet = client.open_by_key(spreadsheet_id).get_worksheet(0)
         data = sheet.get_all_values()
         
-        if len(data) > 0:
-            # Asumsi header ada di baris pertama
-            df = pd.DataFrame(data[1:], columns=data[0])
-            df.columns = df.columns.str.strip().str.upper() # Seragamkan nama kolom jadi huruf kapital
+        # Header di baris 9 (Indeks 8), Data mulai baris 10 (Indeks 9)
+        if len(data) > 8:
+            df = pd.DataFrame(data[9:], columns=data[8])
+            
+            # Bersihkan spasi dan paksa huruf besar agar cocok dengan logika filter
+            df.columns = df.columns.str.strip().str.upper()
+            
+            # Hapus kolom yang tidak punya nama (kolom kosong di kanan)
+            df = df.loc[:, df.columns != '']
+            
             return df
         return pd.DataFrame()
     except Exception as e:
         st.error(f"Gagal koneksi database BPV: {e}")
         return pd.DataFrame()
-
+        
 # =================================================================
 # SIDEBAR NAVIGATION
 # =================================================================
