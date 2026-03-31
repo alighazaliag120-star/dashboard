@@ -82,7 +82,7 @@ with st.sidebar:
     menu_pilihan = st.radio(
         "Pilih Dashboard:",
         # --- TAMBAHAN MENU BARU DI SINI ---
-        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly", "Status BPV", "History Pembelian", "Tracking Vendor"], 
+        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly", "Status BPV", "History Penjualan Terakhir", "Tracking Vendor"], 
         index=0 
     )
     st.divider()
@@ -587,65 +587,84 @@ elif menu_pilihan == "Status BPV":
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis saat memproses data BPV: {e}")
 
-# --- MENU 6: HISTORY PEMBELIAN ---
-elif menu_pilihan == "History Pembelian":
-    st.header("🔍 Search Engine History Pembelian")
-    st.caption("Cari riwayat transaksi PO (2022 - 2026)")
+# --- MENU 6: HISTORY PENJUALAN TERAKHIR ---
+elif menu_pilihan == "History Penjualan Terakhir":
+    st.header("🔍 History Penjualan Terakhir")
+    st.caption(f"📅 {tanggal_sekarang_str} | Menampilkan data transaksi dengan tanggal terupdate")
 
-    # 1. Load Database dengan Cache agar pencarian instan & tidak lemot
+    # 1. Load Database dengan Cache agar cepat
     @st.cache_data
-    def load_history_data():
+    def load_penjualan_terakhir():
         try:
-            df = pd.read_excel("data_po_sbm.xlsx")
+            # Ganti menjadi pd.read_csv('data_penjualan_terakhir.xlsx - Sheet1.csv') jika file Anda berformat CSV
+            df = pd.read_excel("data_penjualan_terakhir.xlsx") 
             df.columns = df.columns.str.strip() # Bersihkan spasi di judul kolom
+            
+            # Pastikan kolom Tanggal berformat datetime untuk keperluan sorting
+            if "Tanggal" in df.columns:
+                df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
+                
             return df
         except Exception as e:
-            return pd.DataFrame() # Return kosong jika file tidak ada
+            return pd.DataFrame() 
 
-    df_history = load_history_data()
+    df_penjualan = load_penjualan_terakhir()
 
-    if df_history.empty:
-        st.error("File 'data_po_sbm.xlsx' tidak ditemukan atau kosong. Pastikan file sudah ada di folder yang sama.")
+    if df_penjualan.empty:
+        st.error("File 'data_penjualan_terakhir.xlsx' tidak ditemukan atau kosong. Pastikan file ada di folder yang sama.")
     else:
-        # Jika kolom Tahun belum ada, kita buat otomatis dari kolom Tanggal
-        if "Tahun Pembelian" not in df_history.columns and "Tanggal" in df_history.columns:
-            df_history["Tanggal"] = pd.to_datetime(df_history["Tanggal"], errors="coerce")
-            df_history["Tahun Pembelian"] = df_history["Tanggal"].dt.year
-        elif "Tahun Pembelian" not in df_history.columns:
-            df_history["Tahun Pembelian"] = "N/A"
+        # 2. Kotak Pencarian dan Tombol Search
+        col_search, col_btn = st.columns([4, 1])
+        with col_search:
+            search_query = st.text_input("Ketik Nama Barang yang dicari:", placeholder="Contoh: Gerobak sorong, Fusebreaker...", key="search_barang_jual")
+        
+        with col_btn:
+            # Memberikan jarak agar tombol sejajar dengan kotak input
+            st.markdown("<br>", unsafe_allow_html=True)
+            tombol_search = st.button("Search", use_container_width=True)
 
-        # 2. Kotak Pencarian
-        search_query = st.text_input("Ketik Nama Barang yang dicari:", placeholder="Contoh: Kabel, Pipa, Filter...", key="search_barang")
+        # 3. Logika ketika tombol diklik atau user menekan Enter
+        if tombol_search or search_query:
+            if search_query:
+                nama_kolom_barang = "Nama Barang" 
+                
+                if nama_kolom_barang in df_penjualan.columns:
+                    # Filter data yang mengandung kata kunci pencarian
+                    df_result = df_penjualan[df_penjualan[nama_kolom_barang].astype(str).str.contains(search_query, case=False, na=False)]
 
-        if search_query:
-            # Pastikan nama kolom 'Nama Barang' sesuai dengan di Excel Anda
-            nama_kolom_barang = "Nama Barang" 
-            
-            if nama_kolom_barang in df_history.columns:
-                # Filter berdasarkan kata kunci 
-                df_result = df_history[df_history[nama_kolom_barang].astype(str).str.contains(search_query, case=False, na=False)]
-
-                if not df_result.empty:
-                    st.success(f"✅ Ditemukan {len(df_result)} riwayat pembelian untuk: '{search_query}'")
-                    
-                    # 3. Menentukan Kolom yang Tampil
-                    kolom_target = ["No Transaksi", "Customer", nama_kolom_barang, "Harga Barang", "Tahun Pembelian"]
-                    
-                    # Cek kolom apa saja yang benar-benar ada di Excel agar tidak error
-                    kolom_tampil = [col for col in kolom_target if col in df_result.columns]
-                    
-                    # Urutkan dari tahun terbaru ke terlama
-                    if "Tahun Pembelian" in kolom_tampil:
-                        df_result = df_result.sort_values(by="Tahun Pembelian", ascending=False)
+                    if not df_result.empty:
+                        # --- LOGIKA TANGGAL PALING UPDATE ---
+                        # Gunakan 'Item Id' sebagai acuan jika ada, jika tidak gunakan 'Nama Barang'
+                        kolom_acuan = 'Item Id' if 'Item Id' in df_result.columns else nama_kolom_barang
                         
-                    st.dataframe(df_result[kolom_tampil], use_container_width=True)
-                else:
-                    st.warning(f"Belum ada riwayat pembelian untuk barang '{search_query}'.")
-            else:
-                st.error(f"Kolom '{nama_kolom_barang}' tidak ditemukan di file Excel.")
-        else:
-            st.info("👆 Silakan ketik nama barang di kotak pencarian untuk melihat history.")
+                        # Urutkan berdasarkan Item/Barang, lalu Tanggal (terbaru di atas)
+                        df_terupdate = df_result.sort_values(by=[kolom_acuan, 'Tanggal'], ascending=[True, False])
+                        
+                        # Hapus duplikat, sisakan yang paling atas (terbaru)
+                        df_terupdate = df_terupdate.drop_duplicates(subset=[kolom_acuan], keep='first')
+                        # ------------------------------------
 
+                        st.success(f"✅ Ditemukan {len(df_terupdate)} jenis barang terupdate untuk: '{search_query}'")
+                        
+                        # 4. Menentukan Kolom yang Tampil (Sesuai Request)
+                        # Menambahkan 'Kode Barang' ke dalam list kolom yang akan ditampilkan
+                        kolom_target = ["No Transaksi", "Tanggal", "Customer", "Sales", "Kode Barang", "Nama Barang", "Harga"]
+                        
+                        # Cek kolom apa saja yang benar-benar ada di Excel agar tidak error
+                        kolom_tampil = [col for col in kolom_target if col in df_terupdate.columns]
+                        
+                        # Ubah kembali format tanggal menjadi YYYY-MM-DD agar rapi di tabel
+                        if "Tanggal" in kolom_tampil:
+                            df_terupdate["Tanggal"] = df_terupdate["Tanggal"].dt.strftime('%Y-%m-%d')
+                            
+                        st.dataframe(df_terupdate[kolom_tampil], use_container_width=True)
+                    else:
+                        st.warning(f"Belum ada riwayat penjualan untuk barang '{search_query}'.")
+                else:
+                    st.error(f"Kolom '{nama_kolom_barang}' tidak ditemukan di file Excel.")
+            else:
+                st.info("👆 Silakan ketik nama barang terlebih dahulu, lalu klik Search.")
+                
 # --- MENU 7: TRACKING VENDOR ---
 elif menu_pilihan == "Tracking Vendor":
     st.header("🏢 Tracking Vendor")
