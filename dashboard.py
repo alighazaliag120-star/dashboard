@@ -56,21 +56,26 @@ with st.sidebar:
 
 today = date.today()
 
+# --- FUNGSI FORMAT TANGGAL BAHASA INDONESIA ---
+hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+bulan_indo = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+              "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+
+nama_hari = hari_indo[today.weekday()]
+nama_bulan = bulan_indo[today.month]
+tanggal_sekarang_str = f"{nama_hari}, {today.day} {nama_bulan} {today.year}"
+# ----------------------------------------------
+
 # =================================================================
 # LOGIKA TAMPILAN BERDASARKAN MENU SIDEBAR
 # =================================================================
 
 # --- MENU UTAMA: HOME ---
 if menu_pilihan == "HOME":
-    # Membuat judul rata tengah
+    # Membuat judul rata tengah beserta tanggalnya
     st.markdown("<h1 style='text-align: center;'>DASHBOARD MONITORING</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: gray; font-size: 18px;'>📅 {tanggal_sekarang_str}</p>", unsafe_allow_html=True)
     st.divider()
-
-    # Tempat untuk Logo / Foto
-    col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
-    with col_img2:
-        st.info("💡 Tempat Foto/Logo: Masukkan file gambar ke folder, lalu aktifkan kode st.image()")
-        # st.image("logo.png", use_container_width=True) 
 
     st.write("") 
     st.write("")
@@ -78,7 +83,8 @@ if menu_pilihan == "HOME":
     # Tombol Akses Cepat (Link)
     st.subheader("🔗 Quick Access Links")
     
-    # Membagi layout menjadi 3 kolom agar tombol tidak terlalu panjang
+    # Membagi layout menjadi 3 kolom per baris agar tombol rapi
+    # --- Baris Pertama ---
     c_link1, c_link2, c_link3 = st.columns(3)
     
     with c_link1:
@@ -88,14 +94,28 @@ if menu_pilihan == "HOME":
         st.link_button("📊 Monitoring SIBIMA", "https://s.id/DashboardSibima", use_container_width=True)
         
     with c_link3:
-        # Kolom ketiga sengaja dibiarkan kosong untuk cadangan link selanjutnya
+        st.link_button("📈 OTS ALL Marketing", "https://s.id/MonitoringOTSAll", use_container_width=True)
+
+    # --- Baris Kedua ---
+    c_link4, c_link5, c_link6 = st.columns(3)
+    
+    with c_link4:
+        st.link_button("📝 ALL BPV SIBIMA", "https://docs.google.com/spreadsheets/d/1fjr-r_FlaAE-WOrHmoC9Ai2-Kxbafzxt1Mr5MciIGOU/edit?gid=0#gid=0", use_container_width=True)
+        
+    with c_link5:
+        st.link_button("📨 OTS ALL RFQ", "https://s.id/RFQSIBIMA", use_container_width=True)
+        
+    with c_link6:
+        # Kolom sengaja dibiarkan kosong untuk cadangan link selanjutnya
         st.write("")
 
+        
 # --- MENU 1: NPR (EXCEL) ---
 elif menu_pilihan == "NPR":
     st.header("Dashboard NPR")
+    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    
     df_npr = pd.read_excel("data_npr.xlsx")
-    # (Pastikan kode NPR kamu selanjutnya berada di posisi menjorok ke dalam sejajar dengan df_npr di atas)
     df_npr.columns = df_npr.columns.str.strip()
     df_npr["Tanggal Complete"] = pd.to_datetime(df_npr["Tanggal Complete"], errors="coerce")
     
@@ -128,6 +148,8 @@ elif menu_pilihan == "NPR":
 # --- MENU 2: PUR (EXCEL) ---
 elif menu_pilihan == "PUR":
     st.header("Dashboard PUR")
+    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    
     df_pur = pd.read_excel("data_pur.xlsx")
     df_pur.columns = df_pur.columns.str.strip()
     df_pur["Tanggal Complete"] = pd.to_datetime(df_pur["Tanggal Complete"], errors="coerce")
@@ -161,6 +183,8 @@ elif menu_pilihan == "PUR":
 # --- MENU 3: SQ TO SO (EXCEL) ---
 elif menu_pilihan == "SQ to SO":
     st.header("Dashboard SQ to SO")
+    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    
     df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
     df_sq_baru = pd.read_excel("data_sq.xlsx")
     
@@ -198,6 +222,8 @@ elif menu_pilihan == "SQ to SO":
 # --- MENU 4: KPI MARKETING (EXCEL) ---
 elif menu_pilihan == "KPI Marketing":
     st.header("KPI Marketing Performance")
+    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    
     df_si = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
     df_sq_kpi = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
     df_si.columns = df_si.columns.str.strip()
@@ -209,13 +235,11 @@ elif menu_pilihan == "KPI Marketing":
     # ==========================================
     # PEMBERSIHAN DATA (MENCEGAH ERROR NOMINAL)
     # ==========================================
-    # 1. Bersihkan kolom Status dari spasi terselubung & seragamkan hurufnya
     if "Status" in df_si.columns:
         df_si["Status"] = df_si["Status"].astype(str).str.strip().str.title()
     if "Status" in df_sq_kpi.columns:
         df_sq_kpi["Status"] = df_sq_kpi["Status"].astype(str).str.strip().str.title()
 
-    # 2. Paksa kolom nominal menjadi angka (Fokus ke Total Nilai)
     if "Total Nilai" in df_si.columns:
         df_si["Total Nilai"] = pd.to_numeric(df_si["Total Nilai"], errors='coerce').fillna(0)
     
@@ -263,6 +287,7 @@ elif menu_pilihan == "KPI Marketing":
 # --- MENU 5: LAPORAN WEEKLY ---
 elif menu_pilihan == "Laporan Weekly":
     st.header("Laporan Weekly - Monitoring PO Jhonlin")
+    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
     
     try:
         df_all = load_gsheet_all()
@@ -273,9 +298,7 @@ elif menu_pilihan == "Laporan Weekly":
 
             # --- FIX: Bersihkan baris kosong pada No PO agar tidak ikut terhitung ---
             if "No PO" in df_all.columns:
-                # 1. Buang nilai yang benar-benar kosong (NaN/Null bawaan Pandas)
                 df_all = df_all.dropna(subset=["No PO"])
-                # 2. Buang yang berupa string kosong (""), spasi tersembunyi, atau teks "nan"
                 df_all = df_all[df_all["No PO"].astype(str).str.strip() != ""]
                 df_all = df_all[~df_all["No PO"].astype(str).str.lower().isin(["nan", "none", "null"])]
 
