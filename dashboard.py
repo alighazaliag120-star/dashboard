@@ -81,7 +81,8 @@ with st.sidebar:
     st.title("Main Menu")
     menu_pilihan = st.radio(
         "Pilih Dashboard:",
-        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly", "Status BPV"], 
+        # --- TAMBAHAN MENU BARU DI SINI ---
+        ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly", "Status BPV", "History Pembelian", "Tracking Vendor"], 
         index=0 
     )
     st.divider()
@@ -300,7 +301,7 @@ elif menu_pilihan == "SQ to SO":
     # --- MEMBACA KEDUA DATABASE (PENTING!) ---
     try:
         df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
-        df_sq_baru = pd.read_excel("data_sq.xlsx") # Baris ini yang tadi hilang
+        df_sq_baru = pd.read_excel("data_sq.xlsx") 
     except Exception as e:
         st.error(f"Gagal membaca file Excel: {e}")
         st.stop()
@@ -585,3 +586,129 @@ elif menu_pilihan == "Status BPV":
 
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis saat memproses data BPV: {e}")
+
+# --- MENU 6: HISTORY PEMBELIAN ---
+elif menu_pilihan == "History Pembelian":
+    st.header("🔍 Search Engine History Pembelian")
+    st.caption("Cari riwayat transaksi PO (2022 - 2026)")
+
+    # 1. Load Database dengan Cache agar pencarian instan & tidak lemot
+    @st.cache_data
+    def load_history_data():
+        try:
+            df = pd.read_excel("data_po_sbm.xlsx")
+            df.columns = df.columns.str.strip() # Bersihkan spasi di judul kolom
+            return df
+        except Exception as e:
+            return pd.DataFrame() # Return kosong jika file tidak ada
+
+    df_history = load_history_data()
+
+    if df_history.empty:
+        st.error("File 'data_po_sbm.xlsx' tidak ditemukan atau kosong. Pastikan file sudah ada di folder yang sama.")
+    else:
+        # Jika kolom Tahun belum ada, kita buat otomatis dari kolom Tanggal
+        if "Tahun Pembelian" not in df_history.columns and "Tanggal" in df_history.columns:
+            df_history["Tanggal"] = pd.to_datetime(df_history["Tanggal"], errors="coerce")
+            df_history["Tahun Pembelian"] = df_history["Tanggal"].dt.year
+        elif "Tahun Pembelian" not in df_history.columns:
+            df_history["Tahun Pembelian"] = "N/A"
+
+        # 2. Kotak Pencarian
+        search_query = st.text_input("Ketik Nama Barang yang dicari:", placeholder="Contoh: Kabel, Pipa, Filter...", key="search_barang")
+
+        if search_query:
+            # Pastikan nama kolom 'Nama Barang' sesuai dengan di Excel Anda
+            nama_kolom_barang = "Nama Barang" 
+            
+            if nama_kolom_barang in df_history.columns:
+                # Filter berdasarkan kata kunci 
+                df_result = df_history[df_history[nama_kolom_barang].astype(str).str.contains(search_query, case=False, na=False)]
+
+                if not df_result.empty:
+                    st.success(f"✅ Ditemukan {len(df_result)} riwayat pembelian untuk: '{search_query}'")
+                    
+                    # 3. Menentukan Kolom yang Tampil
+                    kolom_target = ["No Transaksi", "Customer", nama_kolom_barang, "Harga Barang", "Tahun Pembelian"]
+                    
+                    # Cek kolom apa saja yang benar-benar ada di Excel agar tidak error
+                    kolom_tampil = [col for col in kolom_target if col in df_result.columns]
+                    
+                    # Urutkan dari tahun terbaru ke terlama
+                    if "Tahun Pembelian" in kolom_tampil:
+                        df_result = df_result.sort_values(by="Tahun Pembelian", ascending=False)
+                        
+                    st.dataframe(df_result[kolom_tampil], use_container_width=True)
+                else:
+                    st.warning(f"Belum ada riwayat pembelian untuk barang '{search_query}'.")
+            else:
+                st.error(f"Kolom '{nama_kolom_barang}' tidak ditemukan di file Excel.")
+        else:
+            st.info("👆 Silakan ketik nama barang di kotak pencarian untuk melihat history.")
+
+# --- MENU 7: TRACKING VENDOR ---
+elif menu_pilihan == "Tracking Vendor":
+    st.header("🏢 Tracking Vendor")
+    st.caption(f"📅 {tanggal_sekarang_str} | Sumber: data_po_sbm.xlsx")
+    
+    # 1. Membaca Database
+    try:
+        df_vendor = pd.read_excel("data_po_sbm.xlsx")
+        # Membersihkan spasi tak terlihat di nama kolom
+        df_vendor.columns = df_vendor.columns.str.strip() 
+        
+        # Merapikan format Tanggal agar tidak muncul jam 00:00:00
+        if "Tanggal" in df_vendor.columns:
+            df_vendor["Tanggal"] = pd.to_datetime(df_vendor["Tanggal"], errors="coerce").dt.strftime('%Y-%m-%d')
+            
+    except Exception as e:
+        st.error(f"Gagal membaca file 'data_po_sbm.xlsx': {e}")
+        st.stop()
+
+    # 2. Persiapan Kolom Sesuai Request
+    kolom_wajib = ["No Transaksi", "Tanggal", "Supplier", "Nama Barang"]
+    
+    # Memastikan kolom-kolom tersebut benar-benar ada di Excel agar tidak error
+    kolom_ada = [col for col in kolom_wajib if col in df_vendor.columns]
+    
+    if len(kolom_ada) < len(kolom_wajib):
+        st.warning(f"⚠️ Beberapa kolom tidak ditemukan di database. Kolom yang ada: {', '.join(df_vendor.columns)}")
+
+    st.subheader("🔍 Pencarian Riwayat Vendor")
+    
+    # 3. Fitur Filter & Pencarian
+    if "Supplier" in df_vendor.columns:
+        col_v1, col_v2 = st.columns(2)
+        
+        with col_v1:
+            # Dropdown untuk memilih Supplier
+            list_supplier = ["Semua"] + sorted(df_vendor["Supplier"].dropna().astype(str).unique().tolist())
+            pilih_supplier = st.selectbox("Pilih Supplier:", list_supplier, key="filter_supplier")
+        
+        with col_v2:
+            # Kotak pencarian tambahan untuk Nama Barang
+            cari_barang_vendor = st.text_input("Cari Nama Barang (Opsional):", placeholder="Ketik nama barang...")
+        
+        # 4. Eksekusi Logika Filter
+        df_filter = df_vendor.copy()
+        
+        # Filter jika Supplier dipilih
+        if pilih_supplier != "Semua":
+            df_filter = df_filter[df_filter["Supplier"].astype(str) == pilih_supplier]
+            
+        # Filter jika kotak pencarian barang diisi
+        if cari_barang_vendor and "Nama Barang" in df_filter.columns:
+            df_filter = df_filter[df_filter["Nama Barang"].astype(str).str.contains(cari_barang_vendor, case=False, na=False)]
+            
+        st.divider()
+        
+        # 5. Menampilkan Hasil Tabel
+        if not df_filter.empty:
+            st.success(f"✅ Ditemukan {len(df_filter)} riwayat transaksi.")
+            # Hanya menampilkan 4 kolom yang Anda minta
+            st.dataframe(df_filter[kolom_ada], use_container_width=True)
+        else:
+            st.info("Tidak ada data transaksi yang sesuai dengan pencarian Anda.")
+            
+    else:
+        st.error("Kolom 'Supplier' tidak ditemukan di dalam file Excel.")
