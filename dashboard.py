@@ -37,7 +37,7 @@ def load_gsheet_all():
             return df
         return pd.DataFrame()
     except Exception as e:
-        # Menampilkan error agar kita tahu di mana masalahnya (JWT Signature, Permission, dll)
+        # Menampilkan error agar kita tahu di mana masalahnya
         st.error(f"Gagal koneksi database: {e}")
         return pd.DataFrame()
 
@@ -81,7 +81,6 @@ with st.sidebar:
     st.title("Main Menu")
     menu_pilihan = st.radio(
         "Pilih Dashboard:",
-        # --- TAMBAHAN MENU BARU DI SINI ---
         ["HOME", "NPR", "PUR", "SQ to SO", "KPI Marketing", "Laporan Weekly", "Status BPV", "History Penjualan Terakhir", "Tracking Vendor"], 
         index=0 
     )
@@ -226,7 +225,7 @@ if menu_pilihan == "HOME":
 # --- MENU 1: NPR (EXCEL) ---
 elif menu_pilihan == "NPR":
     st.header("Dashboard NPR")
-    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    st.caption(f"📅 {tanggal_sekarang_str}") 
     
     df_npr = pd.read_excel("data_npr.xlsx")
     df_npr.columns = df_npr.columns.str.strip()
@@ -261,7 +260,7 @@ elif menu_pilihan == "NPR":
 # --- MENU 2: PUR (EXCEL) ---
 elif menu_pilihan == "PUR":
     st.header("Dashboard PUR")
-    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    st.caption(f"📅 {tanggal_sekarang_str}") 
     
     df_pur = pd.read_excel("data_pur.xlsx")
     df_pur.columns = df_pur.columns.str.strip()
@@ -358,16 +357,14 @@ elif menu_pilihan == "SQ to SO":
         df2_f = df2_f[df2_f["Week"] == filter_week]
     
     # --- PERBAIKAN LOGIKA SESUAI INSTRUKSI ---
-    # 1. Filter Selain Draft (Gunakan .str sebelum .lower())
+    # 1. Filter Selain Draft
     df2_non_draft = df2_f[df2_f["Status"].str.strip().str.lower() != "draft"]
     
     # 2. QTY SQ Selain Draft (Unik)
-    # Kita cek dulu apakah kolom 'No Transaksi' ada, jika tidak pakai kolom indeks ke-1
     col_id_sq2 = "No Transaksi" if "No Transaksi" in df2_f.columns else df2_f.columns[1]
     qty_sq_non_draft = df2_non_draft[col_id_sq2].nunique()
     
-    # 3. Total Value (Menjumlahkan semua baris/tidak unik)
-    # Menggunakan kolom 'Sub Total' sesuai file data_sq.xlsx
+    # 3. Total Value
     val_sq_non_draft = df2_non_draft["Sub Total"].sum()
 
     # --- TAMPILAN METRIK BAGIAN 2 ---
@@ -382,7 +379,7 @@ elif menu_pilihan == "SQ to SO":
 # --- MENU 4: KPI MARKETING (EXCEL) ---
 elif menu_pilihan == "KPI Marketing":
     st.header("KPI Marketing Performance")
-    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    st.caption(f"📅 {tanggal_sekarang_str}")
     
     df_si = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
     df_sq_kpi = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
@@ -393,7 +390,7 @@ elif menu_pilihan == "KPI Marketing":
     df_sq_kpi["Tanggal"] = pd.to_datetime(df_sq_kpi["Tanggal"], errors="coerce")
 
     # ==========================================
-    # PEMBERSIHAN DATA (MENCEGAH ERROR NOMINAL)
+    # PEMBERSIHAN DATA
     # ==========================================
     if "Status" in df_si.columns:
         df_si["Status"] = df_si["Status"].astype(str).str.strip().str.title()
@@ -405,7 +402,6 @@ elif menu_pilihan == "KPI Marketing":
     
     if "Sub Total" in df_sq_kpi.columns:
         df_sq_kpi["Sub Total"] = pd.to_numeric(df_sq_kpi["Sub Total"], errors='coerce').fillna(0)
-    # ==========================================
 
     f_col1, f_col2, f_col3 = st.columns(3)
     with f_col1:
@@ -447,7 +443,7 @@ elif menu_pilihan == "KPI Marketing":
 # --- MENU 5: LAPORAN WEEKLY ---
 elif menu_pilihan == "Laporan Weekly":
     st.header("Laporan Weekly - Monitoring PO Jhonlin")
-    st.caption(f"📅 {tanggal_sekarang_str}") # Memunculkan tanggal
+    st.caption(f"📅 {tanggal_sekarang_str}")
     
     try:
         df_all = load_gsheet_all()
@@ -456,7 +452,7 @@ elif menu_pilihan == "Laporan Weekly":
         else:
             df_all.columns = df_all.columns.str.strip()
 
-            # --- FIX: Bersihkan baris kosong pada No PO agar tidak ikut terhitung ---
+            # --- FIX: Bersihkan baris kosong pada No PO ---
             if "No PO" in df_all.columns:
                 df_all = df_all.dropna(subset=["No PO"])
                 df_all = df_all[df_all["No PO"].astype(str).str.strip() != ""]
@@ -514,7 +510,7 @@ elif menu_pilihan == "Laporan Weekly":
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis tampilan: {e}")
 
-# --- MENU BARU: STATUS BPV ---
+# --- MENU BARU: STATUS BPV & TRACKER PO ---
 elif menu_pilihan == "Status BPV":
     st.header("🔔 Monitoring & Notifikasi BPV")
     st.caption(f"📅 {tanggal_sekarang_str}")
@@ -526,7 +522,6 @@ elif menu_pilihan == "Status BPV":
             st.warning("Data BPV tidak tersedia atau gagal memuat.")
         else:
             # --- PROSES CLEANING TANGGAL ---
-            # Pastikan nama kolom sesuai dengan hasil strip() dan upper() di fungsi load
             col_tgl_bpv = 'TANGGAL BPV'
             col_tgl_bayar = 'TANGGAL BAYAR'
 
@@ -538,14 +533,13 @@ elif menu_pilihan == "Status BPV":
                 st.subheader("🔍 Filter Periode")
                 tgl_filter = st.date_input(
                     "Pilih Rentang Tanggal:",
-                    value=(today - timedelta(days=3), today), # Default melihat 3 hari terakhir
+                    value=(today - timedelta(days=3), today), 
                     key="filter_tgl_bpv"
                 )
 
                 if len(tgl_filter) == 2:
                     start_date, end_date = tgl_filter
                     
-                    # Logika Filter Berdasarkan Rentang yang Dipilih
                     bpv_baru = df_bpv[
                         (df_bpv[col_tgl_bpv].dt.date >= start_date) & 
                         (df_bpv[col_tgl_bpv].dt.date <= end_date)
@@ -587,29 +581,35 @@ elif menu_pilihan == "Status BPV":
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis saat memproses data BPV: {e}")
 
-        # =====================================================================
-    # --- SCRIPT BARU DIMULAI DARI SINI (LETAKKAN DI PALING BAWAH) ---
+    # =====================================================================
+    # --- FITUR TAMBAHAN: TRACKER STATUS PO ---
     # =====================================================================
     
-    st.markdown("---") # Garis pembatas antara fitur filter tanggal dan tracker PO
+    st.markdown("---") 
     st.subheader("🧾 Tracker Status PO & BPV")
-    st.caption("Cari nomor PO untuk mengecek kelengkapan BPV dan status pembayarannya.")
+    st.caption("Cari nomor PO untuk mengecek kelengkapan BPV dan status pembayarannya (Terhubung ke GSheet).")
 
-    # 1. Load Data PO (Ganti nama file Excelnya sesuai dengan milik Anda)
-    @st.cache_data
+    # 1. Load Data PO Langsung dari Link Export CSV Google Sheets
+    @st.cache_data(ttl=60) # Cache diperbarui setiap 60 detik agar selalu update
     def load_data_po():
         try:
-            # Ganti 'database_po.xlsx' dengan file yang menyimpan data PO Anda
-            df_po = pd.read_excel("database_po.xlsx") 
-            df_po.columns = df_po.columns.str.strip()
+            url_gsheet = "https://docs.google.com/spreadsheets/d/1fjr-r_FlaAE-WOrHmoC9Ai2-Kxbafzxt1Mr5MciIGOU/export?format=csv&gid=0"
+            
+            # TAMBAHAN PENTING: header=8 untuk memberitahu bahwa judul kolom ada di baris ke-9
+            df_po = pd.read_csv(url_gsheet, header=8) 
+            
+            # Bersihkan spasi dan jadikan huruf besar semua agar mudah dibaca oleh sistem
+            df_po.columns = df_po.columns.str.strip().str.upper() 
             return df_po
+            
         except Exception as e:
+            st.error(f"Gagal menarik data PO dari Google Sheets: {e}")
             return pd.DataFrame()
 
     df_po = load_data_po()
 
     if df_po.empty:
-        st.error("File database PO tidak ditemukan. Pastikan file tersedia di folder.")
+        st.error("File database PO (Google Sheets) tidak dapat diakses. Pastikan file tidak diprivate.")
     else:
         # 2. Kotak Input Pencarian PO
         col_po1, col_po2 = st.columns([4, 1])
@@ -619,57 +619,66 @@ elif menu_pilihan == "Status BPV":
             st.markdown("<br>", unsafe_allow_html=True)
             btn_cek_po = st.button("Cek Status", use_container_width=True)
 
-        # 3. Logika Pencarian
+        # 3. Logika Pencarian Baru (Berdasarkan PO TRANSAKSI & TANGGAL BAYAR)
         if btn_cek_po or input_po:
             if input_po:
-                # PENTING: Sesuaikan 3 nama ini dengan nama kolom di file Excel Anda!
-                kolom_po = "No PO" 
-                kolom_bpv = "No BPV" 
-                kolom_bayar = "Status Pembayaran"
+                # Gunakan huruf kapital agar aman saat pengecekan dengan dataframe
+                kolom_po = "PO TRANSAKSI" 
+                kolom_bayar = "TANGGAL BAYAR"
+                
+                # Memastikan nama kolom di dataframe diseragamkan huruf besar semua agar mudah dicari
+                df_po.columns = df_po.columns.str.strip().str.upper()
                 
                 if kolom_po in df_po.columns:
-                    # Cari PO
+                    # Mencari baris yang mengandung Nomor PO yang diketik
                     hasil_po = df_po[df_po[kolom_po].astype(str).str.contains(input_po, case=False, na=False)]
                     
+                    st.markdown("### Hasil Pengecekan:")
+                    
                     if not hasil_po.empty:
-                        st.success(f"✅ Dokumen PO '{input_po}' ditemukan!")
-                        
+                        # ==========================================
+                        # JIKA PO DITEMUKAN (BPV ADA)
+                        # ==========================================
                         data_terpilih = hasil_po.iloc[0]
+                        no_po_asli = data_terpilih[kolom_po]
                         
-                        # --- LOGIKA CEK BPV ---
-                        punya_bpv = False
-                        if kolom_bpv in data_terpilih:
-                            val_bpv = str(data_terpilih[kolom_bpv]).strip().lower()
-                            if val_bpv not in ['nan', 'none', '', 'belum ada', 'belum']:
-                                punya_bpv = True
-                                
-                        # --- LOGIKA CEK PEMBAYARAN ---
+                        # 1. Tampilkan NO PO
+                        st.success(f"✅ Dokumen ditemukan untuk PO: **{no_po_asli}**")
+                        
+                        # 2. Status BPV
+                        st.info("🟢 **Status BPV: BPV Ada**")
+                        
+                        # 3. Status Pembayaran (Cek isi kolom TANGGAL BAYAR)
                         sudah_bayar = False
                         if kolom_bayar in data_terpilih:
                             val_bayar = str(data_terpilih[kolom_bayar]).strip().lower()
-                            if val_bayar in ['lunas', 'sudah terbayar', 'paid', 'yes', 'sudah']:
+                            # Dianggap belum terbayar jika kolomnya kosong, strip (-), nan, atau NaT
+                            if val_bayar not in ['nan', 'nat', 'none', '', '-', 'null']:
                                 sudah_bayar = True
-
-                        # 4. Tampilkan Hasil
-                        st.markdown("### Hasil Pengecekan:")
-                        if punya_bpv:
-                            if sudah_bayar:
-                                st.info("🟢 **SUDAH ADA BPV & SUDAH TERBAYAR**")
-                            else:
-                                st.warning("🟡 **SUDAH ADA BPV, TAPI BELUM TERBAYAR**")
+                                
+                        if sudah_bayar:
+                            # Jika ingin menampilkan tanggal bayarnya sekalian
+                            tgl_info = data_terpilih[kolom_bayar]
+                            st.success(f"🟢 **Status Pembayaran: Sudah Terbayar** (Tanggal: {tgl_info})")
                         else:
-                            st.error("🔴 **BELUM ADA BPV**")
+                            st.warning("🟡 **Status Pembayaran: Belum Terbayar**")
                             
-                        # Tampilkan tabel detailnya
-                        st.write("Detail Dokumen:")
+                        # Menampilkan tabel data yang relevan
+                        st.write("Detail Data:")
                         st.dataframe(hasil_po, use_container_width=True)
                         
                     else:
-                        st.error(f"❌ Nomor PO '{input_po}' tidak terdaftar di database.")
+                        # ==========================================
+                        # JIKA PO TIDAK DITEMUKAN (BPV TIDAK ADA)
+                        # ==========================================
+                        st.error(f"Pencarian untuk PO: **{input_po}**")
+                        st.error("🔴 **Status BPV: BPV Tidak Ada**")
+                        st.error("🔴 **Status Pembayaran: Belum Terbayar** (Karena BPV belum ada)")
+                        
                 else:
-                    st.error(f"Sistem error: Kolom '{kolom_po}' tidak ada di file Excel Anda.")
+                    st.error(f"Sistem error: Kolom '{kolom_po}' tidak ditemukan di Google Sheets Anda.")
             else:
-                st.warning("👆 Silakan ketik Nomor PO terlebih dahulu.")
+                st.warning("👆 Silakan ketik Nomor PO terlebih dahulu pada kotak pencarian.")
 
 # --- MENU 6: HISTORY PENJUALAN TERAKHIR ---
 elif menu_pilihan == "History Penjualan Terakhir":
@@ -680,11 +689,9 @@ elif menu_pilihan == "History Penjualan Terakhir":
     @st.cache_data
     def load_penjualan_terakhir():
         try:
-            # Menggunakan read_excel untuk file .xlsx
             df = pd.read_excel("data_penjualan_terakhir.xlsx") 
-            df.columns = df.columns.str.strip() # Bersihkan spasi di judul kolom
+            df.columns = df.columns.str.strip() 
             
-            # Pastikan kolom Tanggal berformat datetime
             if "Tanggal" in df.columns:
                 df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
                 
@@ -719,31 +726,18 @@ elif menu_pilihan == "History Penjualan Terakhir":
                     if not df_result.empty:
                         # --- LOGIKA TANGGAL PALING UPDATE ---
                         kolom_acuan = 'Item Id' if 'Item Id' in df_result.columns else nama_kolom_barang
-                        
-                        # Urutkan: Terbaru di atas
                         df_terupdate = df_result.sort_values(by=[kolom_acuan, 'Tanggal'], ascending=[True, False])
-                        
-                        # Ambil hanya baris terbaru untuk setiap barang
                         df_terupdate = df_terupdate.drop_duplicates(subset=[kolom_acuan], keep='first')
 
                         st.success(f"✅ Ditemukan {len(df_terupdate)} jenis barang terupdate untuk: '{search_query}'")
                         
-                        # 4. Menentukan Kolom yang Tampil (Termasuk kolom DATABASE)
                         kolom_target = [
-                            "No Transaksi", 
-                            "Tanggal", 
-                            "Customer", 
-                            "Sales", 
-                            "Kode Barang", 
-                            "Nama Barang", 
-                            "Harga", 
-                            "Database"  # Kolom yang baru Anda tambahkan
+                            "No Transaksi", "Tanggal", "Customer", "Sales", 
+                            "Kode Barang", "Nama Barang", "Harga", "Database"
                         ]
                         
-                        # Filter kolom yang benar-benar ada di file Excel
                         kolom_tampil = [col for col in kolom_target if col in df_terupdate.columns]
                         
-                        # Format tanggal agar enak dibaca (YYYY-MM-DD)
                         if "Tanggal" in kolom_tampil:
                             df_temp_display = df_terupdate.copy()
                             df_temp_display["Tanggal"] = df_temp_display["Tanggal"].dt.strftime('%Y-%m-%d')
@@ -765,10 +759,8 @@ elif menu_pilihan == "Tracking Vendor":
     # 1. Membaca Database
     try:
         df_vendor = pd.read_excel("data_po_sbm.xlsx")
-        # Membersihkan spasi tak terlihat di nama kolom
         df_vendor.columns = df_vendor.columns.str.strip() 
         
-        # Merapikan format Tanggal agar tidak muncul jam 00:00:00
         if "Tanggal" in df_vendor.columns:
             df_vendor["Tanggal"] = pd.to_datetime(df_vendor["Tanggal"], errors="coerce").dt.strftime('%Y-%m-%d')
             
@@ -776,10 +768,7 @@ elif menu_pilihan == "Tracking Vendor":
         st.error(f"Gagal membaca file 'data_po_sbm.xlsx': {e}")
         st.stop()
 
-    # 2. Persiapan Kolom Sesuai Request
     kolom_wajib = ["No Transaksi", "Tanggal", "Supplier", "Nama Barang"]
-    
-    # Memastikan kolom-kolom tersebut benar-benar ada di Excel agar tidak error
     kolom_ada = [col for col in kolom_wajib if col in df_vendor.columns]
     
     if len(kolom_ada) < len(kolom_wajib):
@@ -787,36 +776,28 @@ elif menu_pilihan == "Tracking Vendor":
 
     st.subheader("🔍 Pencarian Riwayat Vendor")
     
-    # 3. Fitur Filter & Pencarian
     if "Supplier" in df_vendor.columns:
         col_v1, col_v2 = st.columns(2)
         
         with col_v1:
-            # Dropdown untuk memilih Supplier
             list_supplier = ["Semua"] + sorted(df_vendor["Supplier"].dropna().astype(str).unique().tolist())
             pilih_supplier = st.selectbox("Pilih Supplier:", list_supplier, key="filter_supplier")
         
         with col_v2:
-            # Kotak pencarian tambahan untuk Nama Barang
             cari_barang_vendor = st.text_input("Cari Nama Barang (Opsional):", placeholder="Ketik nama barang...")
         
-        # 4. Eksekusi Logika Filter
         df_filter = df_vendor.copy()
         
-        # Filter jika Supplier dipilih
         if pilih_supplier != "Semua":
             df_filter = df_filter[df_filter["Supplier"].astype(str) == pilih_supplier]
             
-        # Filter jika kotak pencarian barang diisi
         if cari_barang_vendor and "Nama Barang" in df_filter.columns:
             df_filter = df_filter[df_filter["Nama Barang"].astype(str).str.contains(cari_barang_vendor, case=False, na=False)]
             
         st.divider()
         
-        # 5. Menampilkan Hasil Tabel
         if not df_filter.empty:
             st.success(f"✅ Ditemukan {len(df_filter)} riwayat transaksi.")
-            # Hanya menampilkan 4 kolom yang Anda minta
             st.dataframe(df_filter[kolom_ada], use_container_width=True)
         else:
             st.info("Tidak ada data transaksi yang sesuai dengan pencarian Anda.")
