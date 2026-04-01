@@ -587,6 +587,90 @@ elif menu_pilihan == "Status BPV":
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis saat memproses data BPV: {e}")
 
+        # =====================================================================
+    # --- SCRIPT BARU DIMULAI DARI SINI (LETAKKAN DI PALING BAWAH) ---
+    # =====================================================================
+    
+    st.markdown("---") # Garis pembatas antara fitur filter tanggal dan tracker PO
+    st.subheader("🧾 Tracker Status PO & BPV")
+    st.caption("Cari nomor PO untuk mengecek kelengkapan BPV dan status pembayarannya.")
+
+    # 1. Load Data PO (Ganti nama file Excelnya sesuai dengan milik Anda)
+    @st.cache_data
+    def load_data_po():
+        try:
+            # Ganti 'database_po.xlsx' dengan file yang menyimpan data PO Anda
+            df_po = pd.read_excel("database_po.xlsx") 
+            df_po.columns = df_po.columns.str.strip()
+            return df_po
+        except Exception as e:
+            return pd.DataFrame()
+
+    df_po = load_data_po()
+
+    if df_po.empty:
+        st.error("File database PO tidak ditemukan. Pastikan file tersedia di folder.")
+    else:
+        # 2. Kotak Input Pencarian PO
+        col_po1, col_po2 = st.columns([4, 1])
+        with col_po1:
+            input_po = st.text_input("Ketik Nomor PO:", placeholder="Contoh: PO-12345...", key="search_po_input")
+        with col_po2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            btn_cek_po = st.button("Cek Status", use_container_width=True)
+
+        # 3. Logika Pencarian
+        if btn_cek_po or input_po:
+            if input_po:
+                # PENTING: Sesuaikan 3 nama ini dengan nama kolom di file Excel Anda!
+                kolom_po = "No PO" 
+                kolom_bpv = "No BPV" 
+                kolom_bayar = "Status Pembayaran"
+                
+                if kolom_po in df_po.columns:
+                    # Cari PO
+                    hasil_po = df_po[df_po[kolom_po].astype(str).str.contains(input_po, case=False, na=False)]
+                    
+                    if not hasil_po.empty:
+                        st.success(f"✅ Dokumen PO '{input_po}' ditemukan!")
+                        
+                        data_terpilih = hasil_po.iloc[0]
+                        
+                        # --- LOGIKA CEK BPV ---
+                        punya_bpv = False
+                        if kolom_bpv in data_terpilih:
+                            val_bpv = str(data_terpilih[kolom_bpv]).strip().lower()
+                            if val_bpv not in ['nan', 'none', '', 'belum ada', 'belum']:
+                                punya_bpv = True
+                                
+                        # --- LOGIKA CEK PEMBAYARAN ---
+                        sudah_bayar = False
+                        if kolom_bayar in data_terpilih:
+                            val_bayar = str(data_terpilih[kolom_bayar]).strip().lower()
+                            if val_bayar in ['lunas', 'sudah terbayar', 'paid', 'yes', 'sudah']:
+                                sudah_bayar = True
+
+                        # 4. Tampilkan Hasil
+                        st.markdown("### Hasil Pengecekan:")
+                        if punya_bpv:
+                            if sudah_bayar:
+                                st.info("🟢 **SUDAH ADA BPV & SUDAH TERBAYAR**")
+                            else:
+                                st.warning("🟡 **SUDAH ADA BPV, TAPI BELUM TERBAYAR**")
+                        else:
+                            st.error("🔴 **BELUM ADA BPV**")
+                            
+                        # Tampilkan tabel detailnya
+                        st.write("Detail Dokumen:")
+                        st.dataframe(hasil_po, use_container_width=True)
+                        
+                    else:
+                        st.error(f"❌ Nomor PO '{input_po}' tidak terdaftar di database.")
+                else:
+                    st.error(f"Sistem error: Kolom '{kolom_po}' tidak ada di file Excel Anda.")
+            else:
+                st.warning("👆 Silakan ketik Nomor PO terlebih dahulu.")
+
 # --- MENU 6: HISTORY PENJUALAN TERAKHIR ---
 elif menu_pilihan == "History Penjualan Terakhir":
     st.header("🔍 History Penjualan Terakhir")
