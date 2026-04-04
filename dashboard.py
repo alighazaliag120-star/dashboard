@@ -231,6 +231,9 @@ elif menu_pilihan == "NPR":
     df_npr.columns = df_npr.columns.str.strip()
     df_npr["Tanggal Complete"] = pd.to_datetime(df_npr["Tanggal Complete"], errors="coerce")
     
+    # Menyiapkan data NPR Belum Complete lebih awal agar bisa dihitung di scorecard
+    df_npr_belum_complete = df_npr[df_npr["Tanggal Complete"].isna()]
+    
     col_f_npr1, col_f_npr2 = st.columns(2)
     with col_f_npr1:
         mode_npr = st.radio("Mode Tampilan NPR:", ["Selesai Hari Ini", "Pilih Tanggal Selesai (Tempo Lalu)"], key="mode_npr")
@@ -249,13 +252,25 @@ elif menu_pilihan == "NPR":
             df_npr_filtered = df_npr[df_npr["Status"] == "Complete"]
             label_tabel_npr = "Silakan pilih rentang tanggal"
 
-    c1, c2, c3 = st.columns(3)
+    # ==========================================
+    # UPDATE: Mengubah kolom menjadi 4 dan menambahkan metric baru
+    # ==========================================
+    c1, c2, c3, c4 = st.columns(4)
     c1.metric("Total Semua NPR", len(df_npr))
     c2.metric("Total Semua Complete", len(df_npr[df_npr["Status"] == "Complete"]))
-    c3.metric("NPR Terfilter (Complete)", len(df_npr_filtered))
+    c3.metric("Total NPR Belum Complete", len(df_npr_belum_complete)) # Scorecard baru
+    c4.metric("NPR Terfilter (Complete)", len(df_npr_filtered))
+    
     st.divider()
     st.subheader(label_tabel_npr)
     st.dataframe(df_npr_filtered, use_container_width=True)
+
+    # ==========================================
+    # TABEL NPR BELUM COMPLETE
+    # ==========================================
+    st.divider()
+    st.subheader("Data NPR Belum Complete")
+    st.dataframe(df_npr_belum_complete, use_container_width=True)
 
 # --- MENU 2: PUR (EXCEL) ---
 elif menu_pilihan == "PUR":
@@ -265,6 +280,9 @@ elif menu_pilihan == "PUR":
     df_pur = pd.read_excel("data_pur.xlsx")
     df_pur.columns = df_pur.columns.str.strip()
     df_pur["Tanggal Complete"] = pd.to_datetime(df_pur["Tanggal Complete"], errors="coerce")
+
+    # Menyiapkan data PUR Belum Complete lebih awal
+    df_pur_belum_complete = df_pur[df_pur["Tanggal Complete"].isna()]
 
     col_f_pur1, col_f_pur2 = st.columns(2)
     with col_f_pur1:
@@ -284,13 +302,23 @@ elif menu_pilihan == "PUR":
             df_pur_filtered = df_pur[df_pur["Status"] == "Complete"]
             label_tabel_pur = "Silakan pilih rentang tanggal"
 
-    cp1, cp2, cp3 = st.columns(3)
+    # Mengubah menjadi 4 kolom dan menambah scorecard Total PUR Belum Complete
+    cp1, cp2, cp3, cp4 = st.columns(4)
     cp1.metric("Total Semua PUR", len(df_pur))
     cp2.metric("Total Semua Complete", len(df_pur[df_pur["Status"] == "Complete"]))
-    cp3.metric("PUR Terfilter (Complete)", len(df_pur_filtered))
+    cp3.metric("Total PUR Belum Complete", len(df_pur_belum_complete))
+    cp4.metric("PUR Terfilter (Complete)", len(df_pur_filtered))
+    
     st.divider()
     st.subheader(label_tabel_pur)
     st.dataframe(df_pur_filtered, use_container_width=True)
+
+    # ==========================================
+    # TABEL PUR BELUM COMPLETE
+    # ==========================================
+    st.divider()
+    st.subheader("Data PUR Belum Complete")
+    st.dataframe(df_pur_belum_complete, use_container_width=True)
 
 # --- MENU 3: SQ TO SO (EXCEL) ---
 elif menu_pilihan == "SQ to SO":
@@ -301,15 +329,45 @@ elif menu_pilihan == "SQ to SO":
     try:
         df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
         df_sq_baru = pd.read_excel("data_sq.xlsx") 
+        
+        # Konversi kolom 'Tanggal' ke format datetime agar bisa difilter
+        # (Pastikan nama kolom di Excel benar-benar 'Tanggal')
+        df_sq_to_so["Tanggal"] = pd.to_datetime(df_sq_to_so["Tanggal"], errors="coerce")
+        df_sq_baru["Tanggal"] = pd.to_datetime(df_sq_baru["Tanggal"], errors="coerce")
+        
     except Exception as e:
         st.error(f"Gagal membaca file Excel: {e}")
         st.stop()
     
+    # ==========================================
     # --- BAGIAN 1: MONITORING SQ TO SO ---
+    # ==========================================
     st.subheader("1. Monitoring SQ to SO")
-    cust_list1 = df_sq_to_so["Customer"].dropna().unique().tolist()
-    filter_cust1 = st.selectbox("Filter Customer (SQ to SO)", ["Semua"] + sorted(cust_list1), key="f_cust1")
-    df1_f = df_sq_to_so if filter_cust1 == "Semua" else df_sq_to_so[df_sq_to_so["Customer"] == filter_cust1]
+    
+    # Membuat 2 kolom untuk letak Filter Customer dan Filter Tanggal
+    col_f1_1, col_f1_2 = st.columns(2)
+    
+    with col_f1_1:
+        cust_list1 = df_sq_to_so["Customer"].dropna().unique().tolist()
+        filter_cust1 = st.selectbox("Filter Customer (SQ to SO)", ["Semua"] + sorted(cust_list1), key="f_cust1")
+        
+    with col_f1_2:
+        # Mencari tanggal terawal dan terakhir di database untuk default value
+        min_date1 = df_sq_to_so["Tanggal"].min()
+        max_date1 = df_sq_to_so["Tanggal"].max()
+        # Handle jika data kosong
+        val_date1 = (min_date1.date(), max_date1.date()) if pd.notna(min_date1) else ()
+        filter_date1 = st.date_input("Filter Rentang Tanggal (SQ to SO)", value=val_date1, key="f_date1")
+
+    # Menerapkan Filter Customer
+    df1_f = df_sq_to_so.copy()
+    if filter_cust1 != "Semua":
+        df1_f = df1_f[df1_f["Customer"] == filter_cust1]
+        
+    # Menerapkan Filter Tanggal (jika user memilih range lengkap start & end date)
+    if len(filter_date1) == 2:
+        start_date1, end_date1 = filter_date1
+        df1_f = df1_f[(df1_f["Tanggal"].dt.date >= start_date1) & (df1_f["Tanggal"].dt.date <= end_date1)]
     
     status_valid = ["Complete", "In Progress"]
     
@@ -323,6 +381,10 @@ elif menu_pilihan == "SQ to SO":
     qty_pending = df1_pending["No Transaksi"].nunique()
     val_pending = df1_pending["Total Barang"].sum()
 
+    # C. KELOMPOK: ALL SQ
+    qty_all = df1_f["No Transaksi"].nunique()
+    val_all = df1_f["Total Barang"].sum()
+
     # TAMPILAN METRIK BAGIAN 1
     st.markdown("#### ✅ SQ To SO (Complete & In Progress)")
     m1, m2 = st.columns(2)
@@ -334,27 +396,46 @@ elif menu_pilihan == "SQ to SO":
     m3.metric("Qty SQ (Unik)", f"{qty_pending} SQ")
     m4.metric("Total Value", f"Rp {val_pending:,.0f}".replace(",", "."))
     
+    st.markdown("#### 📦 ALL SQ (Seluruh Status)")
+    m5, m6 = st.columns(2)
+    m5.metric("Qty SQ (Unik)", f"{qty_all} SQ")
+    m6.metric("Total Value", f"Rp {val_all:,.0f}".replace(",", "."))
+    
     st.divider()
     st.dataframe(df1_f, width="stretch")
 
-   # --- BAGIAN 2: MONITORING DATA SQ BARU ---
+    # ==========================================
+    # --- BAGIAN 2: MONITORING DATA SQ BARU ---
+    # ==========================================
     st.subheader("2. Monitoring Data SQ Baru")
     
-    # Filter untuk Bagian 2
-    cf1, cf2 = st.columns(2)
+    # Membuat 3 kolom agar Filter Tanggal bisa diletakkan di samping Customer & Week
+    cf1, cf2, cf3 = st.columns(3)
+    
     with cf1:
-        # Pastikan df_sq_baru sudah terbaca di atas
         list_cust2 = ["Semua"] + sorted(df_sq_baru["Customer"].dropna().unique().tolist())
         filter_cust2 = st.selectbox("Filter Customer", list_cust2, key="f_cust2")
     with cf2:
         list_week2 = ["Semua"] + sorted(df_sq_baru["Week"].dropna().unique().tolist())
         filter_week = st.selectbox("Filter Week", list_week2, key="f_week")
+    with cf3:
+        min_date2 = df_sq_baru["Tanggal"].min()
+        max_date2 = df_sq_baru["Tanggal"].max()
+        val_date2 = (min_date2.date(), max_date2.date()) if pd.notna(min_date2) else ()
+        filter_date2 = st.date_input("Filter Rentang Tanggal (SQ Baru)", value=val_date2, key="f_date2")
     
     df2_f = df_sq_baru.copy()
+    
+    # Menerapkan Filter Customer & Week
     if filter_cust2 != "Semua": 
         df2_f = df2_f[df2_f["Customer"] == filter_cust2]
     if filter_week != "Semua": 
         df2_f = df2_f[df2_f["Week"] == filter_week]
+        
+    # Menerapkan Filter Tanggal
+    if len(filter_date2) == 2:
+        start_date2, end_date2 = filter_date2
+        df2_f = df2_f[(df2_f["Tanggal"].dt.date >= start_date2) & (df2_f["Tanggal"].dt.date <= end_date2)]
     
     # --- PERBAIKAN LOGIKA SESUAI INSTRUKSI ---
     # 1. Filter Selain Draft
@@ -376,6 +457,7 @@ elif menu_pilihan == "SQ to SO":
     st.divider()
     st.dataframe(df2_f, use_container_width=True)
 
+    
 # --- MENU 4: KPI MARKETING (EXCEL) ---
 elif menu_pilihan == "KPI Marketing":
     st.header("KPI Marketing Performance")
@@ -405,7 +487,8 @@ elif menu_pilihan == "KPI Marketing":
 
     f_col1, f_col2, f_col3 = st.columns(3)
     with f_col1:
-        years = sorted(df_si["Tanggal"].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
+        # Tambahkan "Semua" di awal list tahun
+        years = ["Semua"] + sorted(df_si["Tanggal"].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
         sel_year = st.selectbox("Tahun", years, key="kpi_y")
     
     with f_col2:
@@ -417,13 +500,24 @@ elif menu_pilihan == "KPI Marketing":
         list_s = sorted(list(set(df_si["Salesman"].dropna().unique().tolist() + df_sq_kpi["Sales"].dropna().unique().tolist())))
         sel_sales = st.selectbox("Salesman", ["Semua"] + list_s, key="kpi_s")
 
-    mask_si = (df_si["Tanggal"].dt.year == sel_year)
-    mask_sq = (df_sq_kpi["Tanggal"].dt.year == sel_year)
+    # ==========================================
+    # LOGIKA FILTER (MASKING)
+    # ==========================================
+    # Buat mask awal yang bernilai True untuk semua baris
+    mask_si = pd.Series(True, index=df_si.index)
+    mask_sq = pd.Series(True, index=df_sq_kpi.index)
 
+    # Filter Tahun (Hanya jalan jika tidak memilih "Semua")
+    if sel_year != "Semua":
+        mask_si &= (df_si["Tanggal"].dt.year == sel_year)
+        mask_sq &= (df_sq_kpi["Tanggal"].dt.year == sel_year)
+
+    # Filter Bulan
     if sel_month != 0:
         mask_si &= (df_si["Tanggal"].dt.month == sel_month)
         mask_sq &= (df_sq_kpi["Tanggal"].dt.month == sel_month)
     
+    # Filter Salesman
     if sel_sales != "Semua":
         mask_si &= (df_si["Salesman"] == sel_sales)
         mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
@@ -433,13 +527,18 @@ elif menu_pilihan == "KPI Marketing":
     val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
 
     st.divider()
+    
+    # Penyesuaian label agar rapi jika memilih "Semua" tahun
     label_bulan = "Seluruh Bulan" if sel_month == 0 else months[sel_month]
-    st.subheader(f"Ringkasan KPI: {label_bulan} {sel_year}")
+    label_tahun = "Semua Tahun" if sel_year == "Semua" else str(sel_year)
+    
+    st.subheader(f"Ringkasan KPI: {label_bulan} - {label_tahun}")
     
     m1, m2 = st.columns(2)
     m1.metric(f"Total SI - {sel_sales}", f"Rp {val_si:,.0f}".replace(",", "."))
     m2.metric(f"Total SQ - {sel_sales}", f"Rp {val_sq:,.0f}".replace(",", "."))
 
+    
 # --- MENU 5: LAPORAN WEEKLY ---
 elif menu_pilihan == "Laporan Weekly":
     st.header("Laporan Weekly - Monitoring PO Jhonlin")
