@@ -560,9 +560,15 @@ else:
             mask_si &= (df_si["Salesman"] == sel_sales)
             mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
 
-        # Menjumlahkan murni kolom "Total Nilai"
+        # ==========================================
+        # PERHITUNGAN NILAI KPI
+        # ==========================================
+        # Menjumlahkan murni kolom "Total Nilai" & "Sub Total"
         val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Nilai"].sum()
         val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
+        
+        # Menghitung Total PO Diterima (Hanya Complete & In Progress)
+        val_po = df_sq_kpi[mask_sq & df_sq_kpi["Status"].isin(["Complete", "In Progress"])]["Sub Total"].sum()
 
         st.divider()
         
@@ -572,9 +578,68 @@ else:
         
         st.subheader(f"Ringkasan KPI: {label_bulan} - {label_tahun}")
         
-        m1, m2 = st.columns(2)
-        m1.metric(f"Total SI - {sel_sales}", f"Rp {val_si:,.0f}".replace(",", "."))
-        m2.metric(f"Total SQ - {sel_sales}", f"Rp {val_sq:,.0f}".replace(",", "."))
+        # ==========================================
+        # TAMPILAN CUSTOM SCORECARD (3 Kolom)
+        # ==========================================
+        custom_css = """
+        <style>
+        .metric-card {
+            background-color: #262730; 
+            border: 1px solid #4B4C5A; 
+            padding: 15px;
+            border-radius: 10px; 
+            text-align: center;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2); 
+        }
+        .metric-title {
+            color: #FAFAFA;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .metric-value {
+            color: #4CAF50; 
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 0px;
+        }
+        </style>
+        """
+        st.markdown(custom_css, unsafe_allow_html=True)
+
+        # Buat 3 Kolom
+        m1, m2, m3 = st.columns(3)
+
+        # Format angka ke Rupiah
+        format_sq = f"Rp {val_sq:,.0f}".replace(",", ".")
+        format_po = f"Rp {val_po:,.0f}".replace(",", ".")
+        format_si = f"Rp {val_si:,.0f}".replace(",", ".")
+
+        # 1. Total SQ
+        with m1:
+            st.markdown(f"""
+                <div class="metric-card">
+                    <p class="metric-title">Total SQ - {sel_sales}</p>
+                    <p class="metric-value">{format_sq}</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        # 2. Total PO Diterima
+        with m2:
+            st.markdown(f"""
+                <div class="metric-card">
+                    <p class="metric-title">Total PO Diterima - {sel_sales}</p>
+                    <p class="metric-value">{format_po}</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        # 3. Total SI
+        with m3:
+            st.markdown(f"""
+                <div class="metric-card">
+                    <p class="metric-title">Total SI - {sel_sales}</p>
+                    <p class="metric-value">{format_si}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
 
     # --- MENU 5: LAPORAN WEEKLY ---
@@ -696,17 +761,20 @@ else:
                         # --- UI: TABEL BPV BARU ---
                         st.subheader("📥 Rincian BPV Masuk di Periode Ini")
                         if not bpv_baru.empty:
-                            kolom_tampil_baru = [col for col in ['PO TRANSAKSI', 'PIC', 'TANGGAL BPV', 'CUSTOMER', 'SUPPLIER', 'TOTAL'] if col in df_bpv.columns]
+                            kolom_tampil_baru = [col for col in ['PO TRANSAKSI', 'PIC', 'TANGGAL BPV', 'CUSTOMER', 'SUPPLIER', 'TOTAL','NILAI BAYAR'] if col in df_bpv.columns]
                             st.dataframe(bpv_baru[kolom_tampil_baru] if kolom_tampil_baru else bpv_baru, use_container_width=True)
                         else:
                             st.info("Tidak ada BPV baru yang masuk pada rentang tanggal ini.")
                             
                         st.write("") 
                         
-                        # --- UI: TABEL BPV DIBAYAR ---
+                       # --- UI: TABEL BPV DIBAYAR ---
                         st.subheader("💸 Rincian BPV Dibayar di Periode Ini")
                         if not bpv_dibayar.empty:
-                            kolom_tampil_bayar = [col for col in ['PO TRANSAKSI', 'TANGGAL BAYAR', 'CUSTOMER', 'SUPPLIER', 'TOTAL', 'STATUS PO'] if col in df_bpv.columns]
+                            
+                            # DISINI PERUBAHANNYA: Tambahkan 'NILAI BAYAR' ke dalam list
+                            kolom_tampil_bayar = [col for col in ['PO TRANSAKSI', 'TANGGAL BAYAR', 'CUSTOMER', 'SUPPLIER', 'NILAI BAYAR', 'TOTAL', 'STATUS PO'] if col in df_bpv.columns]
+                            
                             st.dataframe(bpv_dibayar[kolom_tampil_bayar] if kolom_tampil_bayar else bpv_dibayar, use_container_width=True)
                         else:
                             st.info("Tidak ada rekaman BPV yang dibayar pada rentang tanggal ini.")
