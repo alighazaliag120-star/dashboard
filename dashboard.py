@@ -438,7 +438,7 @@ else:
         st.download_button("📥 Download Data SQ Baru (CSV)", df2_disp.to_csv(index=False).encode('utf-8'), "SQ_Baru.csv", "text/csv", key="dl_sq2")
 
 
-    # --- MENU 4: KPI MARKETING (EXCEL) ---
+    # --# --- MENU 4: KPI MARKETING (EXCEL) ---
     elif menu_pilihan == "KPI Marketing":
         st.header("KPI Marketing Performance")
         st.caption(f"📅 {tanggal_sekarang_str}")
@@ -456,8 +456,9 @@ else:
         if "Status" in df_sq_kpi.columns:
             df_sq_kpi["Status"] = df_sq_kpi["Status"].astype(str).str.strip().str.title()
 
-        if "Total Nilai" in df_si.columns:
-            df_si["Total Nilai"] = pd.to_numeric(df_si["Total Nilai"], errors='coerce').fillna(0)
+        # Update: Menggunakan Total Harga Jual untuk sheet SI
+        if "Total Harga Jual" in df_si.columns:
+            df_si["Total Harga Jual"] = pd.to_numeric(df_si["Total Harga Jual"], errors='coerce').fillna(0)
         
         if "Sub Total" in df_sq_kpi.columns:
             df_sq_kpi["Sub Total"] = pd.to_numeric(df_sq_kpi["Sub Total"], errors='coerce').fillna(0)
@@ -489,7 +490,8 @@ else:
             mask_si &= (df_si["Salesman"] == sel_sales)
             mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
 
-        val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Nilai"].sum()
+        # Update: Perhitungan val_si menggunakan Total Harga Jual
+        val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Harga Jual"].sum()
         val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
         val_po = df_sq_kpi[mask_sq & df_sq_kpi["Status"].isin(["Complete", "In Progress"])]["Sub Total"].sum()
 
