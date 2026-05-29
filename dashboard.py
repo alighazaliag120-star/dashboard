@@ -12,6 +12,149 @@ import json
 st.set_page_config(layout="wide", page_title="Dashboard Monitoring", initial_sidebar_state="expanded")
 
 # ==========================================
+# CUSTOM UI THEME SIBIMA
+# ==========================================
+
+st.markdown("""
+<style>
+
+/* =========================
+BACKGROUND
+========================= */
+
+.stApp{
+    background: linear-gradient(
+        135deg,
+        #020617 0%,
+        #0f172a 50%,
+        #1e293b 100%
+    );
+}
+
+/* =========================
+SIDEBAR
+========================= */
+
+[data-testid="stSidebar"]{
+    background: #111827;
+    border-right: 1px solid #334155;
+}
+
+[data-testid="stSidebar"] h1{
+    color:white;
+    font-weight:700;
+}
+
+[data-testid="stSidebar"] label{
+    color:white;
+}
+
+/* =========================
+HEADER
+========================= */
+
+h1,h2,h3{
+    color:white !important;
+}
+
+p{
+    color:#cbd5e1;
+}
+
+/* =========================
+METRIC CARD
+========================= */
+
+[data-testid="metric-container"]{
+    background: rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:15px;
+    backdrop-filter:blur(10px);
+    box-shadow:
+    0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* =========================
+BUTTON
+========================= */
+
+.stButton>button{
+    width:100%;
+    border-radius:12px;
+    border:1px solid #334155;
+    background:#1e293b;
+    color:white;
+    height:45px;
+}
+
+.stButton>button:hover{
+    border:1px solid #38bdf8;
+    color:#38bdf8;
+}
+
+/* =========================
+LINK BUTTON
+========================= */
+
+.stLinkButton a{
+    border-radius:14px !important;
+    background:#111827 !important;
+    border:1px solid #334155 !important;
+    color:white !important;
+    transition:0.3s;
+}
+
+.stLinkButton a:hover{
+    border-color:#38bdf8 !important;
+}
+
+/* =========================
+INPUT
+========================= */
+
+.stTextInput input{
+    border-radius:12px;
+}
+
+/* =========================
+SELECT BOX
+========================= */
+
+.stSelectbox div[data-baseweb="select"]{
+    border-radius:12px;
+}
+
+/* =========================
+DATAFRAME
+========================= */
+
+[data-testid="stDataFrame"]{
+    border-radius:15px;
+    overflow:hidden;
+}
+
+/* =========================
+SUCCESS
+========================= */
+
+.stAlert{
+    border-radius:15px;
+}
+
+/* =========================
+PAGE CONTAINER
+========================= */
+
+.block-container{
+    padding-top:1rem;
+    max-width:100%;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================
 # 2. FUNGSI DATABASE
 # ==========================================
 def load_gsheet_all():
@@ -145,7 +288,23 @@ else:
 
     # --- MENU UTAMA: HOME ---
     if menu_pilihan == "HOME":
-        st.markdown("<h1 style='text-align: center;'>DASHBOARD MONITORING</h1>", unsafe_allow_html=True)
+        st.markdown("""
+<div style="
+padding:25px;
+border-radius:20px;
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.1);
+text-align:center;
+">
+
+<h1>📊 Dashboard Monitoring</h1>
+
+<p>
+PT. SIBIMA BERKARYA MANDIRI
+</p>
+
+</div>
+""", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align: center; color: gray; font-size: 18px;'>📅 {tanggal_sekarang_str}</p>", unsafe_allow_html=True)
         st.divider()
 
