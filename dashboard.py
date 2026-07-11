@@ -240,6 +240,9 @@ if not st.session_state['login_sukses']:
     st.sidebar.warning("🔒 Silakan login di layar utama untuk mengakses menu.")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        # Menambahkan jarak 3 baris kosong ke bawah agar judul tidak mepet ke atas
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        
         st.title("🔒 Login Dashboard")
         st.write("Silakan masukkan password untuk mengakses data.")
         st.text_input("Password", type="password", key="password_input")
