@@ -157,6 +157,7 @@ PAGE CONTAINER
 # ==========================================
 # 2. FUNGSI DATABASE
 # ==========================================
+@st.cache_data(ttl=600)
 def load_gsheet_all():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     spreadsheet_id = "10lpdIeAkhQj1Rv2tnP2V806edBnpCICbU2bsf5OslKc"
@@ -183,6 +184,7 @@ def load_gsheet_all():
         st.error(f"Gagal koneksi database: {e}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=600)
 def load_gsheet_bpv():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     spreadsheet_id = "1fjr-r_FlaAE-WOrHmoC9Ai2-Kxbafzxt1Mr5MciIGOU"
@@ -371,15 +373,16 @@ PT. SIBIMA BERKARYA MANDIRI
         try:
             df_si_home = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
             df_sq_home = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
-            df_si_home['Tanggal'] = pd.to_datetime(df_si_home['Tanggal'], errors='coerce')
-            df_sq_home['Tanggal'] = pd.to_datetime(df_sq_home['Tanggal'], errors='coerce')
+            df_si_home['Tanggal'] = pd.to_datetime(df_si_home['Tanggal'], format='mixed', errors='coerce')
+            df_sq_home['Tanggal'] = pd.to_datetime(df_sq_home['Tanggal'], format='mixed', errors='coerce')
             df_si_f = df_si_home[df_si_home['Tanggal'].dt.year == sel_year_home]
             df_sq_f = df_sq_home[df_sq_home['Tanggal'].dt.year == sel_year_home]
 
             kpi1, kpi2 = st.columns(2)
             with kpi1:
                 st.write("Penyumbang SI Terbanyak")
-                si_chart = df_si_f.groupby('Salesman')['Total Nilai'].sum().sort_values(ascending=False).head(5)
+                # Menggunakan "Total Harga Jual" alih-alih "Total Nilai" sesuai kebutuhan data
+                si_chart = df_si_f.groupby('Salesman')['Total Harga Jual'].sum().sort_values(ascending=False).head(5)
                 st.bar_chart(si_chart)
             with kpi2:
                 st.write("Penyumbang SQ Terbanyak")
@@ -407,7 +410,7 @@ PT. SIBIMA BERKARYA MANDIRI
         
         df_npr = pd.read_excel("data_npr.xlsx")
         df_npr.columns = df_npr.columns.str.strip()
-        df_npr["Tanggal Complete"] = pd.to_datetime(df_npr["Tanggal Complete"], errors="coerce")
+        df_npr["Tanggal Complete"] = pd.to_datetime(df_npr["Tanggal Complete"], format='mixed', errors="coerce")
         
         df_npr_belum_complete = df_npr[df_npr["Tanggal Complete"].isna()]
         
@@ -456,7 +459,7 @@ PT. SIBIMA BERKARYA MANDIRI
         
         df_pur = pd.read_excel("data_pur.xlsx")
         df_pur.columns = df_pur.columns.str.strip()
-        df_pur["Tanggal Complete"] = pd.to_datetime(df_pur["Tanggal Complete"], errors="coerce")
+        df_pur["Tanggal Complete"] = pd.to_datetime(df_pur["Tanggal Complete"], format='mixed', errors="coerce")
 
         df_pur_belum_complete = df_pur[df_pur["Tanggal Complete"].isna()]
 
@@ -505,8 +508,8 @@ PT. SIBIMA BERKARYA MANDIRI
         try:
             df_sq_to_so = pd.read_excel("data_sq_to_so.xlsx")
             df_sq_baru = pd.read_excel("data_sq.xlsx") 
-            df_sq_to_so["Tanggal"] = pd.to_datetime(df_sq_to_so["Tanggal"], errors="coerce")
-            df_sq_baru["Tanggal"] = pd.to_datetime(df_sq_baru["Tanggal"], errors="coerce")
+            df_sq_to_so["Tanggal"] = pd.to_datetime(df_sq_to_so["Tanggal"], format='mixed', errors="coerce")
+            df_sq_baru["Tanggal"] = pd.to_datetime(df_sq_baru["Tanggal"], format='mixed', errors="coerce")
         except Exception as e:
             st.error(f"Gagal membaca file Excel: {e}")
             st.stop()
@@ -600,27 +603,35 @@ PT. SIBIMA BERKARYA MANDIRI
         st.download_button("📥 Download Data SQ Baru (CSV)", df2_disp.to_csv(index=False).encode('utf-8'), "SQ_Baru.csv", "text/csv", key="dl_sq2")
 
 
-    # --# --- MENU 4: KPI MARKETING (EXCEL) ---
+   # --# --- MENU 4: KPI MARKETING (EXCEL) ---
     elif menu_pilihan == "KPI Marketing":
         st.header("KPI Marketing Performance")
         st.caption(f"📅 {tanggal_sekarang_str}")
         
         df_si = pd.read_excel("data_kpi.xlsx", sheet_name="SI")
         df_sq_kpi = pd.read_excel("data_kpi.xlsx", sheet_name="SQ")
+        
+        # Bersihkan nama kolom dari spasi berlebih di awal/akhir
         df_si.columns = df_si.columns.str.strip()
         df_sq_kpi.columns = df_sq_kpi.columns.str.strip()
 
-        df_si["Tanggal"] = pd.to_datetime(df_si["Tanggal"], errors="coerce")
-        df_sq_kpi["Tanggal"] = pd.to_datetime(df_sq_kpi["Tanggal"], errors="coerce")
+        df_si["Tanggal"] = pd.to_datetime(df_si["Tanggal"], format='mixed', errors="coerce")
+        df_sq_kpi["Tanggal"] = pd.to_datetime(df_sq_kpi["Tanggal"], format='mixed', errors="coerce")
 
         if "Status" in df_si.columns:
             df_si["Status"] = df_si["Status"].astype(str).str.strip().str.title()
         if "Status" in df_sq_kpi.columns:
             df_sq_kpi["Status"] = df_sq_kpi["Status"].astype(str).str.strip().str.title()
 
-        # Update: Menggunakan Total Harga Jual untuk sheet SI
-        if "Total Harga Jual" in df_si.columns:
-            df_si["Total Harga Jual"] = pd.to_numeric(df_si["Total Harga Jual"], errors='coerce').fillna(0)
+        # PENANGANAN ERROR: Cek apakah kolom benar-benar ada
+        nama_kolom_target = "Total Harga Jual Setelah Diskon"
+        
+        if nama_kolom_target in df_si.columns:
+            df_si[nama_kolom_target] = pd.to_numeric(df_si[nama_kolom_target], errors='coerce').fillna(0)
+        else:
+            # Jika kolom tidak ada, buat kolom sementara bernilai 0 agar tidak error
+            df_si[nama_kolom_target] = 0
+            st.warning(f"⚠️ Kolom '{nama_kolom_target}' tidak ditemukan di sheet SI. Pastikan nama header di Excel sama persis (huruf besar/kecil dan spasinya).")
         
         if "Sub Total" in df_sq_kpi.columns:
             df_sq_kpi["Sub Total"] = pd.to_numeric(df_sq_kpi["Sub Total"], errors='coerce').fillna(0)
@@ -652,8 +663,8 @@ PT. SIBIMA BERKARYA MANDIRI
             mask_si &= (df_si["Salesman"] == sel_sales)
             mask_sq &= (df_sq_kpi["Sales"] == sel_sales)
 
-        # Update: Perhitungan val_si menggunakan Total Harga Jual
-        val_si = df_si[mask_si & (df_si["Status"] != "Draft")]["Total Harga Jual"].sum()
+        # Hitung val_si (sekarang dijamin aman karena kalau nama kolom salah, otomatis bernilai 0)
+        val_si = df_si[mask_si & (df_si["Status"] != "Draft")][nama_kolom_target].sum()
         val_sq = df_sq_kpi[mask_sq & (df_sq_kpi["Status"] != "Draft")]["Sub Total"].sum()
         val_po = df_sq_kpi[mask_sq & df_sq_kpi["Status"].isin(["Complete", "In Progress"])]["Sub Total"].sum()
 
@@ -690,7 +701,6 @@ PT. SIBIMA BERKARYA MANDIRI
             st.markdown(f'<div class="metric-card"><p class="metric-title">Total PO Diterima - {sel_sales}</p><p class="metric-value">{format_po}</p></div>', unsafe_allow_html=True)
         with m3:
             st.markdown(f'<div class="metric-card"><p class="metric-title">Total SI - {sel_sales}</p><p class="metric-value">{format_si}</p></div>', unsafe_allow_html=True)
-
 
     # --- MENU 5: LAPORAN WEEKLY ---
     elif menu_pilihan == "Laporan Weekly":
@@ -773,8 +783,9 @@ PT. SIBIMA BERKARYA MANDIRI
                 col_tgl_bayar = 'TANGGAL BAYAR'
 
                 if col_tgl_bpv in df_bpv.columns and col_tgl_bayar in df_bpv.columns:
-                    df_bpv[col_tgl_bpv] = pd.to_datetime(df_bpv[col_tgl_bpv], format='mixed', errors='coerce')
-                    df_bpv[col_tgl_bayar] = pd.to_datetime(df_bpv[col_tgl_bayar], format='mixed', errors='coerce')
+                    # Perbaikan UTC untuk mengatasi FutureWarning Pandas
+                    df_bpv[col_tgl_bpv] = pd.to_datetime(df_bpv[col_tgl_bpv], format='mixed', errors='coerce', utc=True)
+                    df_bpv[col_tgl_bayar] = pd.to_datetime(df_bpv[col_tgl_bayar], format='mixed', errors='coerce', utc=True)
                     
                     st.subheader("🔍 Filter Periode")
                     tgl_filter = st.date_input("Pilih Rentang Tanggal:", value=(today - timedelta(days=3), today), key="filter_tgl_bpv")
@@ -899,7 +910,7 @@ PT. SIBIMA BERKARYA MANDIRI
                 df = pd.read_excel("data_penjualan_terakhir.xlsx") 
                 df.columns = df.columns.str.strip() 
                 if "Tanggal" in df.columns:
-                    df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
+                    df["Tanggal"] = pd.to_datetime(df["Tanggal"], format='mixed', errors="coerce")
                 return df
             except Exception as e:
                 st.error(f"Gagal memuat file: {e}")
@@ -955,7 +966,7 @@ PT. SIBIMA BERKARYA MANDIRI
             df_vendor = pd.read_excel("data_po_sbm.xlsx")
             df_vendor.columns = df_vendor.columns.str.strip() 
             if "Tanggal" in df_vendor.columns:
-                df_vendor["Tanggal"] = pd.to_datetime(df_vendor["Tanggal"], errors="coerce")
+                df_vendor["Tanggal"] = pd.to_datetime(df_vendor["Tanggal"], format='mixed', errors="coerce")
         except Exception as e:
             st.error(f"Gagal membaca file 'data_po_sbm.xlsx': {e}")
             st.stop()
